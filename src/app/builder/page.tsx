@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ProjectFormData } from '@/lib/types';
 import { ProjectPreview } from '@/components/project-preview';
-import { Plus, Trash2, ArrowLeft, Rocket, Save, User as UserIcon } from 'lucide-react';
+import { Plus, Trash2, ArrowLeft, Rocket, Save, User as UserIcon, LayoutGrid } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
@@ -165,22 +165,31 @@ export default function Builder() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <Link href="/">
-              <Button variant="outline" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Home
-              </Button>
-            </Link>
+            {user ? (
+              <Link href="/dashboard">
+                <Button variant="outline" size="sm" className="cursor-pointer">
+                  <LayoutGrid className="h-4 w-4 mr-2" />
+                  Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <Link href="/">
+                <Button variant="outline" size="sm" className="cursor-pointer">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Home
+                </Button>
+              </Link>
+            )}
             <h1 className="text-3xl font-bold text-gray-900">Page Builder</h1>
           </div>
           <div className="flex gap-2">
             {user ? (
-              <Button onClick={handleSave} size="lg" disabled={isPublishing || loading}>
+              <Button onClick={handleSave} size="lg" disabled={isPublishing || loading} className="cursor-pointer">
                 <Save className="h-4 w-4 mr-2" />
                 {isPublishing ? (editId ? 'Updating...' : 'Saving...') : (editId ? 'Update' : 'Save & Publish')}
               </Button>
             ) : (
-              <Button onClick={handleSignInPrompt} size="lg" variant="outline">
+              <Button onClick={handleSignInPrompt} size="lg" variant="outline" className="cursor-pointer">
                 <Rocket className="h-4 w-4 mr-2" />
                 Sign In to Publish
               </Button>
@@ -202,7 +211,7 @@ export default function Builder() {
                     You must sign in to save and publish your projects. Your projects will be saved to your account and remain editable.
                   </p>
                 </div>
-                <Button onClick={handleSignInPrompt} variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-100">
+                <Button onClick={handleSignInPrompt} variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-100 cursor-pointer">
                   Sign In with GitHub
                 </Button>
               </div>
@@ -221,6 +230,7 @@ export default function Builder() {
                 <div>
                   <Label htmlFor="projectName">Project Name</Label>
                   <Input
+                    className="mt-2"
                     id="projectName"
                     value={formData.projectName}
                     onChange={(e) => setFormData(prev => ({ ...prev, projectName: e.target.value }))}
@@ -230,6 +240,7 @@ export default function Builder() {
                 <div>
                   <Label htmlFor="tagline">Tagline</Label>
                   <Textarea
+                    className="mt-2"
                     id="tagline"
                     value={formData.tagline}
                     onChange={(e) => setFormData(prev => ({ ...prev, tagline: e.target.value }))}
@@ -240,6 +251,7 @@ export default function Builder() {
                 <div>
                   <Label htmlFor="screenshot">Screenshot URL (optional)</Label>
                   <Input
+                    className="mt-2"
                     id="screenshot"
                     value={formData.screenshot || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, screenshot: e.target.value }))}
@@ -266,6 +278,7 @@ export default function Builder() {
                       variant="outline"
                       size="sm"
                       onClick={() => removeFeature(index)}
+                      className="cursor-pointer"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -277,6 +290,7 @@ export default function Builder() {
                   <div>
                     <Label htmlFor="featureTitle">Feature Title</Label>
                     <Input
+                      className="mt-2"
                       id="featureTitle"
                       value={newFeature.title}
                       onChange={(e) => setNewFeature(prev => ({ ...prev, title: e.target.value }))}
@@ -286,6 +300,7 @@ export default function Builder() {
                   <div>
                     <Label htmlFor="featureDescription">Feature Description</Label>
                     <Textarea
+                      className="mt-2"
                       id="featureDescription"
                       value={newFeature.description}
                       onChange={(e) => setNewFeature(prev => ({ ...prev, description: e.target.value }))}
@@ -293,7 +308,7 @@ export default function Builder() {
                       rows={2}
                     />
                   </div>
-                  <Button onClick={addFeature} className="w-full">
+                  <Button onClick={addFeature} className="w-full cursor-pointer">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Feature
                   </Button>
@@ -310,6 +325,7 @@ export default function Builder() {
                 <div>
                   <Label htmlFor="ctaText">Button Text</Label>
                   <Input
+                    className="mt-2"
                     id="ctaText"
                     value={formData.ctaText}
                     onChange={(e) => setFormData(prev => ({ ...prev, ctaText: e.target.value }))}
@@ -319,6 +335,7 @@ export default function Builder() {
                 <div>
                   <Label htmlFor="ctaUrl">Button URL</Label>
                   <Input
+                    className="mt-2"
                     id="ctaUrl"
                     value={formData.ctaUrl}
                     onChange={(e) => setFormData(prev => ({ ...prev, ctaUrl: e.target.value }))}
