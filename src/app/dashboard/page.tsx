@@ -98,15 +98,10 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Link href="/">
-                <Button variant="outline">
-                  Home
-                </Button>
-              </Link>
               <Link href="/builder">
-                <Button>
+                <Button size="lg" className="cursor-pointer">
                   <Plus className="h-4 w-4 mr-2" />
-                  New Project
+                  Create New Project
                 </Button>
               </Link>
             </div>
@@ -168,14 +163,14 @@ export default function Dashboard() {
                   <CardContent>
                     <div className="flex gap-2">
                       <Link href={`/${project.slug}`} target="_blank">
-                        <Button variant="outline" size="sm" className="flex-1">
+                        <Button variant="outline" size="sm" className="cursor-pointer">
                           <Eye className="h-4 w-4 mr-1" />
                           View
                         </Button>
                       </Link>
                       <Link href={`/builder?edit=${project.id}`}>
-                        <Button variant="outline" size="sm" className="flex-1">
-                          <Edit className="h-4 w-4 mr-1" />
+                        <Button variant="outline" size="sm" className="cursor-pointer">
+                          <Edit className="h-4 w-4 mr-2" />
                           Edit
                         </Button>
                       </Link>
@@ -183,9 +178,10 @@ export default function Dashboard() {
                         variant="outline" 
                         size="sm" 
                         onClick={() => deleteProject(project.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
                       </Button>
                     </div>
                   </CardContent>
