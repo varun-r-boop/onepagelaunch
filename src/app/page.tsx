@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Zap, Palette, Smartphone, Download } from "lucide-react";
+import { Zap, Palette, Smartphone, Download, Rocket } from "lucide-react";
 import { AuthButton } from "@/components/auth/auth-button";
 
 export default function Home() {
@@ -23,8 +23,9 @@ export default function Home() {
           </p>
           <div className="flex gap-4 justify-center">
             <Link href="/builder">
-              <Button size="lg" className="text-lg px-8 py-3">
-                Start Building <Zap className="ml-2 h-5 w-5" />
+              <Button size="lg" className="cursor-pointer">
+                <Rocket className="h-4 w-4 mr-2" />
+                Start Building
               </Button>
             </Link>
           </div>
