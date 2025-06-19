@@ -13,6 +13,7 @@ import { Plus, Trash2, ArrowLeft, Rocket, Save, User as UserIcon, LayoutGrid } f
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
+import { toast } from 'sonner';
 
 export default function BuilderClient() {
   const router = useRouter();
@@ -66,12 +67,12 @@ export default function BuilderClient() {
       if (data.project) {
         setFormData(data.project.data);
       } else {
-        alert('Project not found or access denied');
+        toast.error('Project not found or access denied');
         router.push('/dashboard');
       }
     } catch (error) {
       console.error('Error loading project:', error);
-      alert('Failed to load project');
+      toast.error('Failed to load project');
     } finally {
       setLoading(false);
     }
@@ -98,11 +99,11 @@ export default function BuilderClient() {
 
   const handleSave = async () => {
     if (!formData.projectName || !formData.tagline) {
-      alert('Please fill in at least the project name and tagline');
+      toast.error('Please fill in at least the project name and tagline');
       return;
     }
     if (!user) {
-      alert('Please sign in to save your project');
+      toast.error('Please sign in to save your project');
       return;
     }
     setIsPublishing(true);
@@ -122,17 +123,20 @@ export default function BuilderClient() {
         // Show success message and copy link
         if (result.url && navigator.clipboard) {
           await navigator.clipboard.writeText(result.url);
-          alert(`Project ${result.isEdit ? 'updated' : 'saved'} successfully! Link copied to clipboard: ${result.url}`);
+          toast.success(`Project ${result.isEdit ? 'updated' : 'saved'} successfully! Link copied to clipboard`, {
+            description: result.url,
+            duration: 5000,
+          });
         } else {
-          alert(`Project ${result.isEdit ? 'updated' : 'saved'} successfully!`);
+          toast.success(`Project ${result.isEdit ? 'updated' : 'saved'} successfully!`);
         }
         router.push(`/${result.slug}`);
       } else {
-        alert(result.error || 'Failed to save project. Please try again.');
+        toast.error(result.error || 'Failed to save project. Please try again.');
       }
     } catch (error) {
       console.error('Error saving project:', error);
-      alert('An unexpected error occurred. Please try again.');
+      toast.error('An unexpected error occurred. Please try again.');
     } finally {
       setIsPublishing(false);
     }
@@ -148,7 +152,7 @@ export default function BuilderClient() {
       });
     } catch (error) {
       console.error('Error signing in:', error);
-      alert('Failed to sign in. Please try again.');
+      toast.error('Failed to sign in. Please try again.');
     }
   };
 
