@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Star, Zap, Target, Sparkles, Rocket, Heart, Download, Share2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 const iconMap = {
   Star,
@@ -42,7 +43,7 @@ export function ProjectPageClient({ project }: ProjectPageClientProps) {
       });
     } else {
       navigator.clipboard.writeText(window.location.href);
-      alert('URL copied to clipboard!');
+      toast.success('URL copied to clipboard!');
     }
   };
 

@@ -10,6 +10,7 @@ import { Plus, Edit, Trash2, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { SupabaseProject } from '@/lib/types';
 import { User } from '@supabase/supabase-js';
+import { toast } from 'sonner';
 
 export default function Dashboard() {
   const [projects, setProjects] = useState<SupabaseProject[]>([]);
@@ -65,24 +66,35 @@ export default function Dashboard() {
   };
 
   const deleteProject = async (projectId: string) => {
-    if (!confirm('Are you sure you want to delete this project?')) return;
+    // Use a more elegant confirmation with toast
+    toast('Are you sure you want to delete this project?', {
+      action: {
+        label: 'Delete',
+        onClick: async () => {
+          try {
+            const { error } = await supabase
+              .from('projects')
+              .delete()
+              .eq('id', projectId);
 
-    try {
-      const { error } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', projectId);
-
-      if (error) {
-        console.error('Error deleting project:', error);
-        alert('Failed to delete project');
-      } else {
-        setProjects(projects.filter(p => p.id !== projectId));
-      }
-    } catch (error) {
-      console.error('Error deleting project:', error);
-      alert('Failed to delete project');
-    }
+            if (error) {
+              console.error('Error deleting project:', error);
+              toast.error('Failed to delete project');
+            } else {
+              setProjects(projects.filter(p => p.id !== projectId));
+              toast.success('Project deleted successfully');
+            }
+          } catch (error) {
+            console.error('Error deleting project:', error);
+            toast.error('Failed to delete project');
+          }
+        },
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => {},
+      },
+    });
   };
 
   return (
