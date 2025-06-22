@@ -4,6 +4,8 @@ export interface ProjectData {
   projectName: string;
   tagline: string;
   features: Feature[];
+  howItWorks: HowItWorksStep[];
+  faqs: FAQ[];
   ctaText: string;
   ctaUrl: string;
   screenshot?: string;
@@ -17,12 +19,28 @@ export interface Feature {
   title: string;
   description: string;
   icon: string;
+  emoji?: string;
+}
+
+export interface HowItWorksStep {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl?: string;
+}
+
+export interface FAQ {
+  id: string;
+  question: string;
+  answer: string;
 }
 
 export interface ProjectFormData {
   projectName: string;
   tagline: string;
   features: Omit<Feature, 'id'>[];
+  howItWorks: Omit<HowItWorksStep, 'id'>[];
+  faqs: Omit<FAQ, 'id'>[];
   ctaText: string;
   ctaUrl: string;
   screenshot?: string;
