@@ -24,6 +24,10 @@ export default function BuilderClient() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   
+  const [slug, setSlug] = useState('');
+  const [isSlugAvailable, setIsSlugAvailable] = useState<boolean | null>(null);
+  const [isCheckingSlug, setIsCheckingSlug] = useState(false);
+
   // Block-based data
   const [blockData, setBlockData] = useState<BlockProjectData>({
     projectName: 'My Awesome Project',
@@ -103,6 +107,8 @@ export default function BuilderClient() {
         // Check if it's block-based data
         if (data.project.data.blocks) {
           setBlockData(data.project.data as BlockProjectData);
+          setSlug(data.project.slug);
+          setIsSlugAvailable(true);
         } else {
           toast.error('This project was created with the old form builder and cannot be edited in the block builder');
           router.push('/dashboard');
@@ -131,6 +137,14 @@ export default function BuilderClient() {
       toast.error('Please enter a project name');
       return;
     }
+    if (!slug) {
+      toast.error('Please enter a URL slug');
+      return;
+    }
+    if (!isSlugAvailable) {
+      toast.error('This URL slug is already taken');
+      return;
+    }
 
     setIsPublishing(true);
     try {
@@ -140,7 +154,7 @@ export default function BuilderClient() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          projectData: blockData,
+          projectData: { ...blockData, slug },
           editId: editId || undefined
         }),
       });
@@ -182,10 +196,96 @@ export default function BuilderClient() {
     }
   };
 
+  const checkSlugAvailability = async (currentSlug: string) => {
+    if (!currentSlug) {
+      setIsSlugAvailable(null);
+      return;
+    }
+    setIsCheckingSlug(true);
+    try {
+      const response = await fetch(`/api/projects/public/${currentSlug}`);
+      setIsSlugAvailable(!response.ok);
+    } catch (error) {
+      console.error('Error checking slug', error);
+      // Cautiously assume it's not available on error
+      setIsSlugAvailable(false);
+    } finally {
+      setIsCheckingSlug(false);
+    }
+  };
+  
+  // Debounce slug check
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      // Don't check if we are editing an existing project
+      if (editId && slug === blockData.slug) {
+        setIsSlugAvailable(true);
+        return;
+      }
+      checkSlugAvailability(slug);
+    }, 500);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [slug, editId, blockData.slug]);
+
   return (
-    <div className="min-h-screen bg-white">
-      {/* Main Content - Takes full page */}
-      <div className="pt-0">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Header Bar */}
+      <div className="flex justify-between items-center p-4 bg-white border-b border-gray-200">
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard" className="text-sm font-medium text-gray-600 hover:text-black">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <div className="w-64">
+            <Input
+              placeholder="Project Name"
+              value={blockData.projectName}
+              onChange={(e) => setBlockData(prev => ({ ...prev, projectName: e.target.value }))}
+              className="font-semibold text-lg"
+            />
+          </div>
+          <div className="w-64">
+            <div className="relative">
+              <Input
+                placeholder="url-slug"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+              />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+                {isCheckingSlug ? (
+                  <span className="text-gray-500">Checking...</span>
+                ) : isSlugAvailable === true ? (
+                  <span className="text-green-500">Available</span>
+                ) : isSlugAvailable === false ? (
+                  <span className="text-red-500">Taken</span>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {user ? (
+            <>
+              <Button
+                onClick={handleSave}
+                disabled={isPublishing || loading || !isSlugAvailable}
+              >
+                {isPublishing ? (editId ? 'Updating...' : 'Publishing...') : (editId ? 'Update' : 'Publish')}
+              </Button>
+            </>
+          ) : (
+            <Button onClick={handleSignInPrompt}>
+              <UserIcon className="h-4 w-4 mr-2" />
+              Sign in to Publish
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-grow pt-0">
         <BlockEditor
           data={blockData}
           onUpdate={setBlockData}
@@ -194,50 +294,30 @@ export default function BuilderClient() {
 
       {/* Floating Toolbar */}
       <div className="fixed bottom-6 right-6 z-50">
-        <div className="flex flex-col gap-3">
-          {user ? (
-            <Button
-              onClick={handleSave}
-              disabled={isPublishing || loading}
-              className="h-12 w-12 rounded-full shadow-lg cursor-pointer"
-              title={isPublishing ? (editId ? 'Updating...' : 'Saving...') : (editId ? 'Update' : 'Save & Publish')}
-            >
-              <Save className="h-5 w-5" />
-            </Button>
-          ) : (
-            <Button
-              onClick={handleSignInPrompt}
-              className="h-12 w-12 rounded-full shadow-lg bg-green-600 hover:bg-green-700 cursor-pointer"
-              title="Sign In to Publish"
-            >
-              <Rocket className="h-5 w-5" />
-            </Button>
-          )}
-          <Button
-            onClick={() => {
-              const newBlock = {
-                id: `block-${Date.now()}`,
-                type: 'block' as const,
-                title: 'New Block',
-                content: 'Add your content here...',
-                style: {
-                  bgColor: '#ffffff',
-                  padding: '2rem',
-                  borderColor: '#e2e8f0',
-                  textAlign: 'left' as const
-                }
-              };
-              setBlockData(prev => ({
-                ...prev,
-                blocks: [...prev.blocks, newBlock]
-              }));
-            }}
-            className="h-12 w-12 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 cursor-pointer"
-            title="Add New Block"
-          >
-            <Plus className="h-5 w-5" />
-          </Button>
-        </div>
+        <Button
+          onClick={() => {
+            const newBlock = {
+              id: `block-${Date.now()}`,
+              type: 'block' as const,
+              title: 'New Block',
+              content: 'Add your content here...',
+              style: {
+                bgColor: '#ffffff',
+                padding: '2rem',
+                borderColor: '#e2e8f0',
+                textAlign: 'left' as const
+              }
+            };
+            setBlockData(prev => ({
+              ...prev,
+              blocks: [...prev.blocks, newBlock]
+            }));
+          }}
+          className="h-12 w-12 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 cursor-pointer"
+          title="Add New Block"
+        >
+          <Plus className="h-5 w-5" />
+        </Button>
       </div>
     </div>
   );

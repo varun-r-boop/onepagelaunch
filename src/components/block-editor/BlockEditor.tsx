@@ -5,11 +5,93 @@ import BlockComponent from './Block';
 import { BlockProjectData, Block } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface BlockEditorProps {
   data: BlockProjectData;
   onUpdate: (data: BlockProjectData) => void;
 }
+
+// --- Helper Functions for Block Manipulation ---
+
+function findAndRemoveBlock(
+  blocks: Block[],
+  blockId: string
+): { newBlocks: Block[]; foundBlock: Block | null } {
+  let foundBlock: Block | null = null;
+
+  function remover(bs: Block[]): Block[] {
+    // Check current level
+    const filtered = bs.filter(b => {
+      if (b.id === blockId) {
+        foundBlock = b;
+        return false;
+      }
+      return true;
+    });
+
+    if (foundBlock) {
+      return filtered;
+    }
+
+    // Recurse into children
+    return bs.map(b => {
+      if (!b.children) return b;
+      const newChildren = remover(b.children);
+      // This check is important to only return a new object if something changed
+      if (b.children.length === newChildren.length) {
+        return b;
+      }
+      return { ...b, children: newChildren };
+    });
+  }
+
+  const newBlocks = remover(blocks);
+  return { newBlocks, foundBlock };
+}
+
+function findAndInsertBlock(
+  blocks: Block[],
+  targetId: string,
+  blockToInsert: Block,
+  position: 'before' | 'after' | 'inside'
+): Block[] {
+  if (position === 'inside') {
+    return blocks.map(b => {
+      if (b.id === targetId) {
+        return { ...b, children: [...(b.children || []), blockToInsert] };
+      }
+      if (b.children) {
+        return { ...b, children: findAndInsertBlock(b.children, targetId, blockToInsert, position) };
+      }
+      return b;
+    });
+  }
+
+  const newBlocks: Block[] = [];
+  let inserted = false;
+  for (const b of blocks) {
+    if (b.id === targetId) {
+      if (position === 'before') newBlocks.push(blockToInsert);
+      newBlocks.push(b);
+      if (position === 'after') newBlocks.push(blockToInsert);
+      inserted = true;
+    } else {
+      newBlocks.push(b);
+    }
+  }
+
+  if (inserted) {
+    return newBlocks;
+  }
+
+  return blocks.map(b => {
+    if (!b.children) return b;
+    return { ...b, children: findAndInsertBlock(b.children, targetId, blockToInsert, position) };
+  });
+}
+
+// --- BlockEditor Component ---
 
 export default function BlockEditor({ data, onUpdate }: BlockEditorProps) {
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
@@ -103,88 +185,82 @@ export default function BlockEditor({ data, onUpdate }: BlockEditorProps) {
       blocks: duplicateBlockRecursive(data.blocks)
     });
   };
+  
+  const moveBlock = (draggedId: string, targetId: string, position: 'before' | 'after' | 'inside') => {
+    if (draggedId === targetId && position !== 'inside') return;
 
-  const moveBlock = (blockId: string, direction: 'up' | 'down') => {
-    const blocks = [...data.blocks];
-    const currentIndex = blocks.findIndex(block => block.id === blockId);
-    
-    if (currentIndex === -1) return;
-    
-    if (direction === 'up' && currentIndex > 0) {
-      [blocks[currentIndex], blocks[currentIndex - 1]] = [blocks[currentIndex - 1], blocks[currentIndex]];
-    } else if (direction === 'down' && currentIndex < blocks.length - 1) {
-      [blocks[currentIndex], blocks[currentIndex + 1]] = [blocks[currentIndex + 1], blocks[currentIndex]];
+    const { newBlocks: blocksWithoutDragged, foundBlock: draggedBlock } = findAndRemoveBlock(
+      data.blocks,
+      draggedId
+    );
+
+    if (!draggedBlock) {
+      console.error("Couldn't find dragged block");
+      return;
     }
     
-    onUpdate({
-      ...data,
-      blocks
-    });
+    // Prevent dropping a block into itself or its own children
+    if (position === 'inside') {
+      if (draggedId === targetId) return;
+      let isDescendant = false;
+      const checkDescendants = (children: Block[]) => {
+        for (const child of children) {
+          if (child.id === targetId) isDescendant = true;
+          if (isDescendant) return;
+          if (child.children) checkDescendants(child.children);
+        }
+      };
+      if (draggedBlock.children) checkDescendants(draggedBlock.children);
+      if (isDescendant) {
+        toast.error("Cannot drop a block into one of its own children.");
+        return;
+      }
+    }
+
+    const newBlocks = findAndInsertBlock(blocksWithoutDragged, targetId, draggedBlock, position);
+    onUpdate({ ...data, blocks: newBlocks });
   };
+  
+  const handleRootDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const draggedId = e.dataTransfer.getData('text/plain');
+    if (!draggedId) return;
 
-  const moveBlockToNewParent = (draggedId: string, targetId: string) => {
-    let draggedBlock: Block | null = null;
+    // This prevents firing when dropping on a block which handles its own drop
+    if ((e.target as HTMLElement).closest('.block-component')) {
+      return;
+    }
 
-    // Find and remove the dragged block
-    const findAndRemove = (blocks: Block[]): Block[] => {
-      return blocks.reduce((acc, block) => {
-        if (block.id === draggedId) {
-          draggedBlock = { ...block };
-          return acc;
-        }
-        if (block.children) {
-          const newChildren = findAndRemove(block.children);
-          if (newChildren.length !== block.children.length) {
-            acc.push({ ...block, children: newChildren });
-            return acc;
-          }
-        }
-        acc.push(block);
-        return acc;
-      }, [] as Block[]);
-    };
-
-    let newBlocks = findAndRemove(data.blocks);
-
+    const { newBlocks: blocksWithoutDragged, foundBlock: draggedBlock } = findAndRemoveBlock(data.blocks, draggedId);
+    
     if (!draggedBlock) return;
 
-    // Add the dragged block to the target
-    const findAndAdd = (blocks: Block[]): Block[] => {
-      return blocks.map(block => {
-        if (block.id === targetId) {
-          const newChildren = [...(block.children || []), draggedBlock as Block];
-          return { ...block, children: newChildren };
-        }
-        if (block.children) {
-          return { ...block, children: findAndAdd(block.children) };
-        }
-        return block;
-      });
-    };
-    
-    newBlocks = findAndAdd(newBlocks);
-    
+    // Add to the end of the root blocks array
+    const newBlocks = [...blocksWithoutDragged, draggedBlock];
     onUpdate({ ...data, blocks: newBlocks });
   };
 
   return (
-    <div className="w-full min-h-screen bg-white">
+    <div 
+      className="w-full min-h-screen bg-white"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleRootDrop}
+    >
       {/* Blocks Container */}
       <div className="w-full px-8 py-6">
         {data.blocks.map((block, index) => (
-          <div key={block.id} className="relative">
-            <BlockComponent
-              block={block}
-              onUpdate={(updatedBlock) => updateBlock(block.id, updatedBlock)}
-              onDelete={() => deleteBlock(block.id)}
-              onDuplicate={() => duplicateBlock(block.id)}
-              onMoveUp={() => moveBlock(block.id, 'up')}
-              onMoveDown={() => moveBlock(block.id, 'down')}
-              onDrop={(draggedId) => moveBlockToNewParent(draggedId, block.id)}
-              isSelected={selectedBlockId === block.id}
-              onSelect={() => setSelectedBlockId(block.id)}
-            />
-          </div>
+          <BlockComponent
+            key={block.id}
+            block={block}
+            onUpdate={(updatedBlock) => updateBlock(block.id, updatedBlock)}
+            onDelete={() => deleteBlock(block.id)}
+            onDuplicate={() => duplicateBlock(block.id)}
+            onDrop={moveBlock}
+            isSelected={selectedBlockId === block.id}
+            onSelect={() => setSelectedBlockId(block.id)}
+          />
         ))}
       </div>
     </div>

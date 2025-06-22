@@ -13,7 +13,8 @@ import {
   Square,
   Minus,
   Maximize2,
-  Square as BorderIcon
+  Square as BorderIcon,
+  SplitSquareHorizontal,
 } from 'lucide-react';
 
 interface BlockProps {
@@ -25,7 +26,7 @@ interface BlockProps {
   onMoveDown?: () => void;
   isSelected?: boolean;
   onSelect?: () => void;
-  onDrop?: (draggedId: string) => void;
+  onDrop?: (draggedId: string, targetId: string, position: 'before' | 'after' | 'inside') => void;
   depth?: number;
 }
 
@@ -45,6 +46,7 @@ export default function BlockComponent({
   const [showBubbleMenu, setShowBubbleMenu] = React.useState(false);
   const [isDragging, setIsDragging] = React.useState(false);
   const [isDragOver, setIsDragOver] = React.useState(false);
+  const [dropPosition, setDropPosition] = React.useState<'before' | 'after' | 'inside' | null>(null);
   const [showColorPicker, setShowColorPicker] = React.useState(false);
   const [showBorderColorPicker, setShowBorderColorPicker] = React.useState(false);
   const blockRef = React.useRef<HTMLDivElement>(null);
@@ -130,6 +132,11 @@ export default function BlockComponent({
     setShowBorderColorPicker(false);
   };
 
+  const toggleLayout = () => {
+    const newLayout = block.style?.layout === 'row' ? 'column' : 'row';
+    updateStyle({ layout: newLayout });
+  };
+
   const getBlockStyles = () => {
     const styles: React.CSSProperties = {
       padding: block.style?.padding || '1rem',
@@ -154,12 +161,14 @@ export default function BlockComponent({
   };
 
   const handleDragStart = (e: React.DragEvent) => {
+    e.stopPropagation();
     setIsDragging(true);
     e.dataTransfer.setData('text/plain', block.id);
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  const handleDragEnd = () => {
+  const handleDragEnd = (e: React.DragEvent) => {
+    e.stopPropagation();
     setIsDragging(false);
   };
 
@@ -167,9 +176,11 @@ export default function BlockComponent({
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
+    setDropPosition(null);
+
     const draggedId = e.dataTransfer.getData('text/plain');
-    if (draggedId && draggedId !== block.id && onDrop) {
-      onDrop(draggedId);
+    if (draggedId && draggedId !== block.id && onDrop && dropPosition) {
+      onDrop(draggedId, block.id, dropPosition);
     }
   };
 
@@ -177,13 +188,30 @@ export default function BlockComponent({
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
+    
+    if (!blockRef.current) return;
+
     setIsDragOver(true);
+
+    const dropTarget = blockRef.current.getBoundingClientRect();
+    const dropPos = e.clientY;
+    const dropZoneHeight = dropTarget.height;
+    const dropZoneMargin = dropZoneHeight * 0.3; // 30% margin top/bottom
+
+    if (dropPos < dropTarget.top + dropZoneMargin) {
+      setDropPosition('before');
+    } else if (dropPos > dropTarget.bottom - dropZoneMargin) {
+      setDropPosition('after');
+    } else {
+      setDropPosition('inside');
+    }
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
+    setDropPosition(null);
   };
 
   const predefinedColors = [
@@ -202,7 +230,7 @@ export default function BlockComponent({
   return (
     <div
       ref={blockRef}
-      className={`block-component ${isDragging ? 'opacity-50' : ''} ${isDragOver ? 'bg-blue-100 border-blue-400' : ''}`}
+      className={`block-component relative transition-all duration-200 ${isDragging ? 'opacity-30' : ''}`}
       style={getBlockStyles()}
       draggable
       onDragStart={handleDragStart}
@@ -214,6 +242,14 @@ export default function BlockComponent({
       onMouseEnter={() => setShowBubbleMenu(true)}
       onMouseLeave={() => setShowBubbleMenu(false)}
     >
+      {isDragOver && (
+        <>
+          {dropPosition === 'before' && <div className="absolute -top-1 left-0 right-0 h-1.5 bg-blue-500 rounded-full z-20" />}
+          {dropPosition === 'after' && <div className="absolute -bottom-1 left-0 right-0 h-1.5 bg-blue-500 rounded-full z-20" />}
+          {dropPosition === 'inside' && <div className="absolute inset-0 border-2 border-blue-500 bg-blue-100/50 rounded-lg z-10" />}
+        </>
+      )}
+
       {/* Enhanced Bubble Menu */}
       {showBubbleMenu && (
         <div className="absolute -bottom-15 left-1/2 transform -translate-x-1/2 z-10 bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-2xl p-3 opacity-95">
@@ -259,6 +295,18 @@ export default function BlockComponent({
             >
               <Type className="h-4 w-4" />
             </Button>
+
+            {block.children && block.children.length > 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={toggleLayout}
+                title={`Layout: ${block.style?.layout === 'row' ? 'Side-by-side' : 'Stacked'}`}
+                className="h-8 w-8 p-0 rounded-xl hover:bg-gray-50 hover:shadow-sm transition-all duration-200"
+              >
+                <SplitSquareHorizontal className="h-4 w-4" />
+              </Button>
+            )}
 
             {/* Edit Content */}
             <Button
@@ -399,7 +447,7 @@ export default function BlockComponent({
 
         {/* Children Blocks */}
         {block.children && block.children.length > 0 && (
-          <div className={`block-children ${block.type === 'inline' ? 'flex flex-wrap gap-2' : 'space-y-2'}`}>
+          <div className={`block-children mt-2 ${block.style?.layout === 'row' ? 'flex flex-row flex-wrap gap-2' : 'space-y-2'}`}>
             {block.children.map((childBlock) => (
               <BlockComponent
                 key={childBlock.id}

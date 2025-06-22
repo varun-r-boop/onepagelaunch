@@ -40,36 +40,6 @@ export function ProjectPageClient({ project }: ProjectPageClientProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
-      {/* Floating Action Bar */}
-      <div className="fixed top-4 left-4 right-4 z-50 flex justify-between items-center">
-        <Link href="/">
-          <Button variant="outline" size="sm" className="bg-white/80 backdrop-blur-sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Home
-          </Button>
-        </Link>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleShare}
-            className="bg-white/80 backdrop-blur-sm"
-          >
-            <Share2 className="h-4 w-4 mr-2" />
-            Share
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleDownload}
-            className="bg-white/80 backdrop-blur-sm"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Download
-          </Button>
-        </div>
-      </div>
-
       <div className="pt-20 pb-16">
         <ProjectBlockPreview data={project} />
         
@@ -117,7 +87,7 @@ function generateStaticHTML(project: BlockProjectData): string {
       <div class="block ${block.type}" ${style}>
         ${block.title ? `<h2>${block.title}</h2>` : ''}
         ${block.content ? `<div>${block.content}</div>` : ''}
-        ${childrenHTML ? `<div class="children">${childrenHTML}</div>` : ''}
+        ${childrenHTML ? `<div class="children ${block.style?.layout || 'column'}">${childrenHTML}</div>` : ''}
       </div>
     `;
   }).join('');
@@ -143,6 +113,8 @@ function generateStaticHTML(project: BlockProjectData): string {
     .block.block { display: block; }
     .block.inline { display: inline-block; margin: 0.25rem; width: auto; }
     .children { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .children.row { flex-direction: row; }
+    .children.column { flex-direction: column; }
     .children .block.block { width: 100%; }
     .children .block.inline { width: auto; }
   </style>

@@ -7,6 +7,7 @@ export interface BlockStyle {
   borderRadius?: string;
   textAlign?: 'left' | 'center' | 'right';
   width?: string;
+  layout?: 'row' | 'column';
 }
 
 export interface Block {

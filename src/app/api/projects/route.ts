@@ -8,106 +8,112 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { projectData, editId } = body as { projectData: BlockProjectData; editId?: string };
+    const { slug, projectName, ...restOfData } = projectData;
 
-    // Validate required fields
-    if (!projectData.projectName) {
+    // --- Validate input ---
+    if (!projectName || !slug) {
       return NextResponse.json(
-        { error: 'Project name is required' },
+        { error: 'Project name and slug are required.' },
         { status: 400 }
       );
     }
 
-    // Get authenticated user
+    // --- Authenticate user ---
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    // Generate or use existing slug
-    let slug: string;
-    let projectId: string;
-
     if (editId) {
-      // Editing existing project - fetch current data
-      const { data: existingProject, error: fetchError } = await supabase
+      // --- UPDATE EXISTING PROJECT ---
+      const { data: existingProject } = await supabase
         .from('projects')
-        .select('slug, id')
+        .select('slug')
         .eq('id', editId)
         .eq('user_id', user.id)
         .single();
 
-      if (fetchError || !existingProject) {
+      if (!existingProject) {
+        return NextResponse.json({ error: 'Project not found or access denied.' }, { status: 404 });
+      }
+
+      // If slug has changed, check for uniqueness
+      if (slug !== existingProject.slug) {
+        const { data: slugCheck } = await supabase.from('projects').select('id').eq('slug', slug).single();
+        if (slugCheck) {
+          return NextResponse.json({ error: 'This URL slug is already taken.' }, { status: 409 });
+        }
+      }
+
+      // Update project
+      const { error: updateError } = await supabase
+          .from('projects')
+          .update({ 
+            data: { projectName, ...restOfData }, 
+            slug, 
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', editId);
+      
+      if (updateError) {
+        console.error('Error updating project:', updateError);
+        return NextResponse.json({ error: 'Failed to update project.' }, { status: 500 });
+      }
+
+    } else {
+      // --- CREATE NEW PROJECT ---
+      // 1. Check if user already has a project
+      const { data: userProjects } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1);
+
+      if (userProjects && userProjects.length > 0) {
         return NextResponse.json(
-          { error: 'Project not found or access denied' },
-          { status: 404 }
+          { error: 'You can only create one page. Please edit your existing page.' },
+          { status: 403 }
         );
       }
 
-      slug = existingProject.slug;
-      projectId = existingProject.id;
-    } else {
-      // Creating new project
-      projectId = uuidv4();
-      const baseSlug = slugify(projectData.projectName, {
-        lower: true,
-        strict: true,
-        remove: /[*+~.()'"!:@]/g,
-      });
+      // 2. Check slug uniqueness
+      const { data: slugCheck } = await supabase.from('projects').select('id').eq('slug', slug).single();
+      if (slugCheck) {
+        return NextResponse.json({ error: 'This URL slug is already taken.' }, { status: 409 });
+      }
+
+      // 3. Insert new project
+      const projectId = uuidv4();
+      const supabaseData = {
+        id: projectId,
+        user_id: user.id,
+        slug,
+        data: { projectName, ...restOfData },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
       
-      const timestamp = Date.now().toString(36);
-      slug = `${baseSlug}-${timestamp}`;
+      const { error: insertError } = await supabase.from('projects').insert(supabaseData);
+
+      if (insertError) {
+        console.error('Error inserting project:', insertError);
+        return NextResponse.json({ error: 'Failed to create project.' }, { status: 500 });
+      }
     }
 
-    // Save to Supabase
-    const supabaseData = {
-      id: projectId,
-      user_id: user.id,
-      slug,
-      data: projectData,
-      updated_at: new Date().toISOString(),
-      ...(editId ? {} : { created_at: new Date().toISOString() })
-    };
-
-    const { error: dbError } = editId 
-      ? await supabase
-          .from('projects')
-          .update({
-            data: projectData,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editId)
-          .eq('user_id', user.id)
-      : await supabase
-          .from('projects')
-          .insert(supabaseData);
-
-    if (dbError) {
-      console.error('Database error:', dbError);
-      return NextResponse.json(
-        { error: 'Failed to save project to database' },
-        { status: 500 }
-      );
-    }
-
+    // --- RETURN SUCCESS ---
     return NextResponse.json({ 
       success: true, 
-      slug,
-      projectId,
+      slug: slug,
       url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/${slug}`,
       isEdit: !!editId
     });
 
   } catch (error) {
-    console.error('Error saving project:', error);
-    return NextResponse.json(
-      { error: 'Failed to save project' },
-      { status: 500 }
-    );
+    console.error('Error in POST /api/projects:', error);
+    return NextResponse.json({ error: 'An unexpected error occurred.' }, { status: 500 });
   }
 }
 

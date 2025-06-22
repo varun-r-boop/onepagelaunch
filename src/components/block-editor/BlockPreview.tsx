@@ -45,7 +45,7 @@ export default function BlockPreview({ block }: BlockPreviewProps) {
 
       {/* Children Blocks */}
       {block.children && block.children.length > 0 && (
-        <div className={`block-children ${block.type === 'inline' ? 'flex flex-wrap gap-2' : 'space-y-2'}`}>
+        <div className={`block-children mt-2 ${block.style?.layout === 'row' ? 'flex flex-row flex-wrap gap-2' : 'space-y-2'}`}>
           {block.children.map((childBlock) => (
             <BlockPreview key={childBlock.id} block={childBlock} />
           ))}
