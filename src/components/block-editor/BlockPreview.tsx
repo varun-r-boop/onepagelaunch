@@ -16,6 +16,7 @@ export default function BlockPreview({ block }: BlockPreviewProps) {
       borderRadius: block.style?.borderRadius || '0.5rem',
       margin: block.style?.margin || '0.5rem 0',
       textAlign: block.style?.textAlign || 'left',
+      width: block.style?.width || '100%',
     };
 
     if (block.type === 'inline') {

@@ -223,6 +223,7 @@ export default function BuilderClient() {
                 style: {
                   bgColor: '#ffffff',
                   padding: '2rem',
+                  borderColor: '#e2e8f0',
                   textAlign: 'left' as const
                 }
               };

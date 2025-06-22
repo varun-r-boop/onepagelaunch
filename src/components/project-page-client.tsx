@@ -92,12 +92,16 @@ function generateStaticHTML(project: BlockProjectData): string {
   const blocksHTML = project.blocks.map(block => {
     const style = block.style ? `style="${Object.entries(block.style).map(([key, value]) => {
       const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+      if (key === 'bgColor') return `background-color: ${value}`;
+      if (key === 'borderColor') return `border: 2px solid ${value}`;
       return `${cssKey}: ${value}`;
     }).join('; ')}"` : '';
     
     const childrenHTML = block.children?.map(child => {
       const childStyle = child.style ? `style="${Object.entries(child.style).map(([key, value]) => {
         const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+        if (key === 'bgColor') return `background-color: ${value}`;
+        if (key === 'borderColor') return `border: 2px solid ${value}`;
         return `${cssKey}: ${value}`;
       }).join('; ')}"` : '';
       
@@ -136,8 +140,8 @@ function generateStaticHTML(project: BlockProjectData): string {
     .header { text-align: center; margin-bottom: 4rem; }
     .header h1 { font-size: 3.5rem; color: #1f2937; margin-bottom: 1rem; }
     .block { margin: 1rem 0; }
-    .block.block { display: block; width: 100%; }
-    .block.inline { display: inline-block; margin: 0.25rem; }
+    .block.block { display: block; }
+    .block.inline { display: inline-block; margin: 0.25rem; width: auto; }
     .children { display: flex; flex-wrap: wrap; gap: 0.5rem; }
     .children .block.block { width: 100%; }
     .children .block.inline { width: auto; }

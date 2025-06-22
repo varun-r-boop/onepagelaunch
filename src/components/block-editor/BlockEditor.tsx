@@ -122,6 +122,51 @@ export default function BlockEditor({ data, onUpdate }: BlockEditorProps) {
     });
   };
 
+  const moveBlockToNewParent = (draggedId: string, targetId: string) => {
+    let draggedBlock: Block | null = null;
+
+    // Find and remove the dragged block
+    const findAndRemove = (blocks: Block[]): Block[] => {
+      return blocks.reduce((acc, block) => {
+        if (block.id === draggedId) {
+          draggedBlock = { ...block };
+          return acc;
+        }
+        if (block.children) {
+          const newChildren = findAndRemove(block.children);
+          if (newChildren.length !== block.children.length) {
+            acc.push({ ...block, children: newChildren });
+            return acc;
+          }
+        }
+        acc.push(block);
+        return acc;
+      }, [] as Block[]);
+    };
+
+    let newBlocks = findAndRemove(data.blocks);
+
+    if (!draggedBlock) return;
+
+    // Add the dragged block to the target
+    const findAndAdd = (blocks: Block[]): Block[] => {
+      return blocks.map(block => {
+        if (block.id === targetId) {
+          const newChildren = [...(block.children || []), draggedBlock as Block];
+          return { ...block, children: newChildren };
+        }
+        if (block.children) {
+          return { ...block, children: findAndAdd(block.children) };
+        }
+        return block;
+      });
+    };
+    
+    newBlocks = findAndAdd(newBlocks);
+    
+    onUpdate({ ...data, blocks: newBlocks });
+  };
+
   return (
     <div className="w-full min-h-screen bg-white">
       {/* Blocks Container */}
@@ -135,6 +180,7 @@ export default function BlockEditor({ data, onUpdate }: BlockEditorProps) {
               onDuplicate={() => duplicateBlock(block.id)}
               onMoveUp={() => moveBlock(block.id, 'up')}
               onMoveDown={() => moveBlock(block.id, 'down')}
+              onDrop={(draggedId) => moveBlockToNewParent(draggedId, block.id)}
               isSelected={selectedBlockId === block.id}
               onSelect={() => setSelectedBlockId(block.id)}
             />

@@ -12,7 +12,8 @@ import {
   Edit3,
   Square,
   Minus,
-  Maximize2
+  Maximize2,
+  Square as BorderIcon
 } from 'lucide-react';
 
 interface BlockProps {
@@ -24,6 +25,7 @@ interface BlockProps {
   onMoveDown?: () => void;
   isSelected?: boolean;
   onSelect?: () => void;
+  onDrop?: (draggedId: string) => void;
   depth?: number;
 }
 
@@ -36,12 +38,15 @@ export default function BlockComponent({
   onMoveDown,
   isSelected = false,
   onSelect,
+  onDrop,
   depth = 0
 }: BlockProps) {
   const [isEditing, setIsEditing] = React.useState(false);
   const [showBubbleMenu, setShowBubbleMenu] = React.useState(false);
   const [isDragging, setIsDragging] = React.useState(false);
+  const [isDragOver, setIsDragOver] = React.useState(false);
   const [showColorPicker, setShowColorPicker] = React.useState(false);
+  const [showBorderColorPicker, setShowBorderColorPicker] = React.useState(false);
   const blockRef = React.useRef<HTMLDivElement>(null);
   const titleRef = React.useRef<HTMLDivElement>(null);
   const contentRef = React.useRef<HTMLDivElement>(null);
@@ -59,6 +64,16 @@ export default function BlockComponent({
       contentRef.current.contentEditable = 'true';
       contentRef.current.focus();
       setIsEditing(true);
+      // Select all text if it's the default content
+      if (contentRef.current.textContent === 'Add your content here...') {
+        const range = document.createRange();
+        range.selectNodeContents(contentRef.current);
+        const selection = window.getSelection();
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      }
     }
   };
 
@@ -106,6 +121,15 @@ export default function BlockComponent({
     setShowColorPicker(false);
   };
 
+  const changeBorderColor = (color: string) => {
+    if (color === 'transparent') {
+      updateStyle({ borderColor: undefined });
+    } else {
+      updateStyle({ borderColor: color });
+    }
+    setShowBorderColorPicker(false);
+  };
+
   const getBlockStyles = () => {
     const styles: React.CSSProperties = {
       padding: block.style?.padding || '1rem',
@@ -117,8 +141,6 @@ export default function BlockComponent({
       position: 'relative',
       minHeight: '2rem',
       cursor: isSelected ? 'default' : 'pointer',
-      outline: isSelected ? '2px solid #3b82f6' : 'none',
-      outlineOffset: '2px',
       width: block.style?.width || '100%',
     };
 
@@ -143,16 +165,25 @@ export default function BlockComponent({
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
     const draggedId = e.dataTransfer.getData('text/plain');
-    if (draggedId !== block.id) {
-      // Handle drop logic here - would need to be implemented in parent
-      console.log(`Dropped ${draggedId} into ${block.id}`);
+    if (draggedId && draggedId !== block.id && onDrop) {
+      onDrop(draggedId);
     }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
   };
 
   const predefinedColors = [
@@ -161,23 +192,31 @@ export default function BlockComponent({
     '#fdf4ff', '#fef7ff', '#fffbeb', '#f0fdf4'
   ];
 
+  const predefinedBorderColors = [
+    '#000000', '#374151', '#6b7280', '#9ca3af',
+    '#dc2626', '#ea580c', '#d97706', '#65a30d',
+    '#059669', '#0891b2', '#2563eb', '#7c3aed',
+    '#db2777', '#be185d', '#be123c', '#881337'
+  ];
+
   return (
     <div
       ref={blockRef}
-      className={`block-component ${isDragging ? 'opacity-50' : ''}`}
+      className={`block-component ${isDragging ? 'opacity-50' : ''} ${isDragOver ? 'bg-blue-100 border-blue-400' : ''}`}
       style={getBlockStyles()}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
       onClick={onSelect}
       onMouseEnter={() => setShowBubbleMenu(true)}
       onMouseLeave={() => setShowBubbleMenu(false)}
     >
       {/* Enhanced Bubble Menu */}
       {showBubbleMenu && (
-        <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 z-10 bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-2xl p-3 opacity-95">
+        <div className="absolute -bottom-15 left-1/2 transform -translate-x-1/2 z-10 bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-2xl p-3 opacity-95">
           <div className="flex gap-3">
             {/* Size Controls */}
             <div className="flex gap-1 bg-gray-50/80 rounded-lg p-1">
@@ -221,6 +260,17 @@ export default function BlockComponent({
               <Type className="h-4 w-4" />
             </Button>
 
+            {/* Edit Content */}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleContentEdit}
+              title="Edit content"
+              className="h-8 w-8 p-0 rounded-xl hover:bg-gray-50 hover:shadow-sm transition-all duration-200"
+            >
+              <Edit3 className="h-4 w-4" />
+            </Button>
+
             {/* Background Color */}
             <div className="relative">
               <Button
@@ -240,6 +290,43 @@ export default function BlockComponent({
                       <button
                         key={color}
                         onClick={() => changeBackgroundColor(color)}
+                        className="w-7 h-7 rounded-xl border-2 border-gray-200 hover:scale-110 hover:border-gray-400 transition-all duration-200 shadow-sm"
+                        style={{ backgroundColor: color }}
+                        title={color}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Border Color */}
+            <div className="relative">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowBorderColorPicker(!showBorderColorPicker)}
+                title="Border color"
+                className="h-8 w-8 p-0 rounded-xl hover:bg-gray-50 hover:shadow-sm transition-all duration-200"
+              >
+                <BorderIcon className="h-4 w-4" />
+              </Button>
+              
+              {showBorderColorPicker && (
+                <div className="absolute top-10 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-2xl p-3 z-20">
+                  <div className="grid grid-cols-4 gap-2">
+                    {/* Remove Border Option */}
+                    <button
+                      onClick={() => changeBorderColor('transparent')}
+                      className="w-7 h-7 rounded-xl border-2 border-gray-200 hover:scale-110 hover:border-gray-400 transition-all duration-200 shadow-sm bg-white flex items-center justify-center"
+                      title="Remove border"
+                    >
+                      <Minus className="h-3 w-3 text-gray-400" />
+                    </button>
+                    {predefinedBorderColors.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => changeBorderColor(color)}
                         className="w-7 h-7 rounded-xl border-2 border-gray-200 hover:scale-110 hover:border-gray-400 transition-all duration-200 shadow-sm"
                         style={{ backgroundColor: color }}
                         title={color}
@@ -280,7 +367,8 @@ export default function BlockComponent({
         {block.title && (
           <div
             ref={titleRef}
-            className="block-title font-semibold text-lg mb-2"
+            className="block-title font-semibold text-lg mb-2 cursor-text hover:bg-gray-50/50 rounded px-1 -mx-1 transition-colors focus:outline-none"
+            onClick={handleTitleEdit}
             onBlur={handleBlur}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -296,7 +384,8 @@ export default function BlockComponent({
         {block.content && (
           <div
             ref={contentRef}
-            className="block-content"
+            className="block-content cursor-text hover:bg-gray-50/50 rounded px-1 -mx-1 transition-colors focus:outline-none"
+            onClick={handleContentEdit}
             onBlur={handleBlur}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && e.shiftKey) {
@@ -335,6 +424,7 @@ export default function BlockComponent({
                 }}
                 isSelected={isSelected}
                 onSelect={onSelect}
+                onDrop={onDrop}
                 depth={depth + 1}
               />
             ))}
@@ -343,7 +433,10 @@ export default function BlockComponent({
 
         {/* Empty state for blocks without content */}
         {!block.title && !block.content && (!block.children || block.children.length === 0) && (
-          <div className="text-gray-400 italic text-sm">
+          <div 
+            className="text-gray-400 italic text-sm cursor-text hover:bg-gray-50/50 rounded px-1 -mx-1 transition-colors focus:outline-none"
+            onClick={handleContentEdit}
+          >
             Click to edit this block
           </div>
         )}
