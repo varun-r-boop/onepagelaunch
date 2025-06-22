@@ -6,6 +6,7 @@ export interface BlockStyle {
   margin?: string;
   borderRadius?: string;
   textAlign?: 'left' | 'center' | 'right';
+  width?: string;
 }
 
 export interface Block {

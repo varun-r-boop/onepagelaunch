@@ -3,15 +3,16 @@
 import * as React from 'react';
 import { Block, BlockStyle } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { 
-  MoreHorizontal, 
   Copy, 
   Trash2, 
   Type, 
   Palette,
   Move,
-  Edit3
+  Edit3,
+  Square,
+  Minus,
+  Maximize2
 } from 'lucide-react';
 
 interface BlockProps {
@@ -40,13 +41,14 @@ export default function BlockComponent({
   const [isEditing, setIsEditing] = React.useState(false);
   const [showBubbleMenu, setShowBubbleMenu] = React.useState(false);
   const [isDragging, setIsDragging] = React.useState(false);
+  const [showColorPicker, setShowColorPicker] = React.useState(false);
   const blockRef = React.useRef<HTMLDivElement>(null);
   const titleRef = React.useRef<HTMLDivElement>(null);
   const contentRef = React.useRef<HTMLDivElement>(null);
 
   const handleTitleEdit = () => {
     if (titleRef.current) {
-      titleRef.current.contentEditable = true;
+      titleRef.current.contentEditable = 'true';
       titleRef.current.focus();
       setIsEditing(true);
     }
@@ -54,7 +56,7 @@ export default function BlockComponent({
 
   const handleContentEdit = () => {
     if (contentRef.current) {
-      contentRef.current.contentEditable = true;
+      contentRef.current.contentEditable = 'true';
       contentRef.current.focus();
       setIsEditing(true);
     }
@@ -63,14 +65,14 @@ export default function BlockComponent({
   const handleBlur = () => {
     setIsEditing(false);
     if (titleRef.current) {
-      titleRef.current.contentEditable = false;
+      titleRef.current.contentEditable = 'false';
       const newTitle = titleRef.current.textContent || '';
       if (newTitle !== block.title) {
         onUpdate({ ...block, title: newTitle });
       }
     }
     if (contentRef.current) {
-      contentRef.current.contentEditable = false;
+      contentRef.current.contentEditable = 'false';
       const newContent = contentRef.current.innerHTML || '';
       if (newContent !== block.content) {
         onUpdate({ ...block, content: newContent });
@@ -90,6 +92,20 @@ export default function BlockComponent({
     });
   };
 
+  const changeSize = (size: 'small' | 'medium' | 'large') => {
+    const widthMap = {
+      small: '25%',
+      medium: '50%',
+      large: '100%'
+    };
+    updateStyle({ width: widthMap[size] });
+  };
+
+  const changeBackgroundColor = (color: string) => {
+    updateStyle({ bgColor: color });
+    setShowColorPicker(false);
+  };
+
   const getBlockStyles = () => {
     const styles: React.CSSProperties = {
       padding: block.style?.padding || '1rem',
@@ -103,6 +119,7 @@ export default function BlockComponent({
       cursor: isSelected ? 'default' : 'pointer',
       outline: isSelected ? '2px solid #3b82f6' : 'none',
       outlineOffset: '2px',
+      width: block.style?.width || '100%',
     };
 
     if (block.type === 'inline') {
@@ -138,6 +155,12 @@ export default function BlockComponent({
     e.dataTransfer.dropEffect = 'move';
   };
 
+  const predefinedColors = [
+    '#ffffff', '#f8fafc', '#f1f5f9', '#e2e8f0', 
+    '#fef2f2', '#fef3c7', '#ecfdf5', '#eff6ff',
+    '#fdf4ff', '#fef7ff', '#fffbeb', '#f0fdf4'
+  ];
+
   return (
     <div
       ref={blockRef}
@@ -152,59 +175,107 @@ export default function BlockComponent({
       onMouseEnter={() => setShowBubbleMenu(true)}
       onMouseLeave={() => setShowBubbleMenu(false)}
     >
-      {/* Bubble Menu */}
+      {/* Enhanced Bubble Menu */}
       {showBubbleMenu && (
-        <div className="absolute -top-2 -right-2 z-10 bg-white border border-gray-200 rounded-lg shadow-lg p-1 flex gap-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={handleTitleEdit}
-            title="Edit title"
-          >
-            <Edit3 className="h-3 w-3" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={toggleBlockType}
-            title={`Change to ${block.type === 'block' ? 'inline' : 'block'}`}
-          >
-            <Type className="h-3 w-3" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {/* TODO: Open style panel */}}
-            title="Style block"
-          >
-            <Palette className="h-3 w-3" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onDuplicate}
-            title="Duplicate block"
-          >
-            <Copy className="h-3 w-3" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onDelete}
-            title="Delete block"
-            className="text-red-600 hover:text-red-700"
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
+        <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 z-10 bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-2xl p-3 opacity-95">
+          <div className="flex gap-3">
+            {/* Size Controls */}
+            <div className="flex gap-1 bg-gray-50/80 rounded-lg p-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => changeSize('small')}
+                title="Small width (25%)"
+                className="h-7 w-7 p-0 rounded-md hover:bg-white hover:shadow-sm transition-all duration-200"
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => changeSize('medium')}
+                title="Medium width (50%)"
+                className="h-7 w-7 p-0 rounded-md hover:bg-white hover:shadow-sm transition-all duration-200"
+              >
+                <Square className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => changeSize('large')}
+                title="Full width (100%)"
+                className="h-7 w-7 p-0 rounded-md hover:bg-white hover:shadow-sm transition-all duration-200"
+              >
+                <Maximize2 className="h-3 w-3" />
+              </Button>
+            </div>
+
+            {/* Block/Inline Toggle */}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={toggleBlockType}
+              title={`Change to ${block.type === 'block' ? 'inline' : 'block'}`}
+              className="h-8 w-8 p-0 rounded-xl hover:bg-gray-50 hover:shadow-sm transition-all duration-200"
+            >
+              <Type className="h-4 w-4" />
+            </Button>
+
+            {/* Background Color */}
+            <div className="relative">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowColorPicker(!showColorPicker)}
+                title="Background color"
+                className="h-8 w-8 p-0 rounded-xl hover:bg-gray-50 hover:shadow-sm transition-all duration-200"
+              >
+                <Palette className="h-4 w-4" />
+              </Button>
+              
+              {showColorPicker && (
+                <div className="absolute top-10 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-2xl p-3 z-20">
+                  <div className="grid grid-cols-4 gap-2">
+                    {predefinedColors.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => changeBackgroundColor(color)}
+                        className="w-7 h-7 rounded-xl border-2 border-gray-200 hover:scale-110 hover:border-gray-400 transition-all duration-200 shadow-sm"
+                        style={{ backgroundColor: color }}
+                        title={color}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Duplicate */}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onDuplicate}
+              title="Duplicate block"
+              className="h-8 w-8 p-0 rounded-xl hover:bg-gray-50 hover:shadow-sm transition-all duration-200"
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+
+            {/* Delete */}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onDelete}
+              title="Delete block"
+              className="h-8 w-8 p-0 rounded-xl hover:bg-red-50 hover:text-red-600 transition-all duration-200"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
 
-      {/* Drag Handle */}
-      <div className="absolute -left-6 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Move className="h-4 w-4 text-gray-400 cursor-move" />
-      </div>
-
-      {/* Block Content */}
+      {/* Block Content - Renders exactly like final site */}
       <div className="block-content">
         {block.title && (
           <div

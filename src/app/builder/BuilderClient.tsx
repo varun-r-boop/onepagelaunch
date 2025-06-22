@@ -8,13 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { BlockProjectData } from '@/lib/types';
-import { ArrowLeft, Rocket, Save, User as UserIcon, LayoutGrid } from 'lucide-react';
+import { ArrowLeft, Rocket, Save, User as UserIcon, LayoutGrid, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import BlockEditor from '@/components/block-editor/BlockEditor';
-import ProjectBlockPreview from '@/components/block-editor/ProjectBlockPreview';
 
 export default function BuilderClient() {
   const router = useRouter();
@@ -184,105 +183,59 @@ export default function BuilderClient() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            {user ? (
-              <Link href="/dashboard">
-                <Button variant="outline" size="sm" className="cursor-pointer">
-                  <LayoutGrid className="h-4 w-4 mr-2" />
-                  Dashboard
-                </Button>
-              </Link>
-            ) : (
-              <Link href="/">
-                <Button variant="outline" size="sm" className="cursor-pointer">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Home
-                </Button>
-              </Link>
-            )}
-            <h1 className="text-3xl font-bold text-gray-900">Block Builder</h1>
-          </div>
-          <div className="flex gap-2">
-            {user ? (
-              <Button onClick={handleSave} size="lg" disabled={isPublishing || loading} className="cursor-pointer">
-                <Save className="h-4 w-4 mr-2" />
-                {isPublishing ? (editId ? 'Updating...' : 'Saving...') : (editId ? 'Update' : 'Save & Publish')}
-              </Button>
-            ) : (
-              <Button onClick={handleSignInPrompt} size="lg" variant="outline" className="cursor-pointer">
-                <Rocket className="h-4 w-4 mr-2" />
-                Sign In to Publish
-              </Button>
-            )}
-          </div>
-        </div>
+    <div className="min-h-screen bg-white">
+      {/* Main Content - Takes full page */}
+      <div className="pt-0">
+        <BlockEditor
+          data={blockData}
+          onUpdate={setBlockData}
+        />
+      </div>
 
-        {/* Sign-in prompt for non-authenticated users */}
-        {!user && (
-          <Card className="mb-8 border-blue-200 bg-blue-50">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="text-blue-600">
-                  <UserIcon className="h-8 w-8" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-blue-900">Sign In Required</h3>
-                  <p className="text-blue-700 text-sm">
-                    You must sign in to save and publish your projects. Your projects will be saved to your account and remain editable.
-                  </p>
-                </div>
-                <Button onClick={handleSignInPrompt} variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-100 cursor-pointer">
-                  Sign In with GitHub
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Block Builder */}
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Block Editor */}
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Block Editor</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-4">
-                  <Label htmlFor="blockProjectName">Project Name</Label>
-                  <Input
-                    className="mt-2"
-                    id="blockProjectName"
-                    value={blockData.projectName}
-                    onChange={(e) => setBlockData(prev => ({ ...prev, projectName: e.target.value }))}
-                    placeholder="My Awesome Project"
-                  />
-                </div>
-                <BlockEditor
-                  data={blockData}
-                  onUpdate={setBlockData}
-                />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Live Preview */}
-          <div className="lg:sticky lg:top-8">
-            <Card className="h-fit">
-              <CardHeader>
-                <CardTitle>Live Preview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="border rounded-lg overflow-hidden">
-                  <ProjectBlockPreview data={blockData} />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+      {/* Floating Toolbar */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <div className="flex flex-col gap-3">
+          {user ? (
+            <Button
+              onClick={handleSave}
+              disabled={isPublishing || loading}
+              className="h-12 w-12 rounded-full shadow-lg cursor-pointer"
+              title={isPublishing ? (editId ? 'Updating...' : 'Saving...') : (editId ? 'Update' : 'Save & Publish')}
+            >
+              <Save className="h-5 w-5" />
+            </Button>
+          ) : (
+            <Button
+              onClick={handleSignInPrompt}
+              className="h-12 w-12 rounded-full shadow-lg bg-green-600 hover:bg-green-700 cursor-pointer"
+              title="Sign In to Publish"
+            >
+              <Rocket className="h-5 w-5" />
+            </Button>
+          )}
+          <Button
+            onClick={() => {
+              const newBlock = {
+                id: `block-${Date.now()}`,
+                type: 'block' as const,
+                title: 'New Block',
+                content: 'Add your content here...',
+                style: {
+                  bgColor: '#ffffff',
+                  padding: '2rem',
+                  textAlign: 'left' as const
+                }
+              };
+              setBlockData(prev => ({
+                ...prev,
+                blocks: [...prev.blocks, newBlock]
+              }));
+            }}
+            className="h-12 w-12 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 cursor-pointer"
+            title="Add New Block"
+          >
+            <Plus className="h-5 w-5" />
+          </Button>
         </div>
       </div>
     </div>
