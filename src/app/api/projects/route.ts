@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { ProjectFormData } from '@/lib/types';
+import { BlockProjectData } from '@/lib/types';
 import slugify from 'slugify';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { projectData, editId } = body as { projectData: ProjectFormData; editId?: string };
+    const { projectData, editId } = body as { projectData: BlockProjectData; editId?: string };
 
     // Validate required fields
-    if (!projectData.projectName || !projectData.tagline) {
+    if (!projectData.projectName) {
       return NextResponse.json(
-        { error: 'Project name and tagline are required' },
+        { error: 'Project name is required' },
         { status: 400 }
       );
     }

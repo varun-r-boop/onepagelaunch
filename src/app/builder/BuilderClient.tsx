@@ -1,19 +1,20 @@
 'use client';
 
+import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ProjectFormData } from '@/lib/types';
-import { ProjectPreview } from '@/components/project-preview';
-import { Plus, Trash2, ArrowLeft, Rocket, Save, User as UserIcon, LayoutGrid } from 'lucide-react';
+import { BlockProjectData } from '@/lib/types';
+import { ArrowLeft, Rocket, Save, User as UserIcon, LayoutGrid } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import { toast } from 'sonner';
+import BlockEditor from '@/components/block-editor/BlockEditor';
+import ProjectBlockPreview from '@/components/block-editor/ProjectBlockPreview';
 
 export default function BuilderClient() {
   const router = useRouter();
@@ -23,18 +24,53 @@ export default function BuilderClient() {
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<ProjectFormData>({
-    projectName: '',
-    tagline: '',
-    features: [],
-    ctaText: 'Get Started',
-    ctaUrl: '',
-  });
-
-  const [newFeature, setNewFeature] = useState({
-    title: '',
-    description: '',
-    icon: 'Star'
+  
+  // Block-based data
+  const [blockData, setBlockData] = useState<BlockProjectData>({
+    projectName: 'My Awesome Project',
+    blocks: [
+      {
+        id: 'hero-block',
+        type: 'block',
+        title: '🚀 Welcome to My Project',
+        content: 'This is a powerful tool that helps you build amazing things.',
+        style: {
+          bgColor: '#f8fafc',
+          padding: '2rem',
+          textAlign: 'center'
+        }
+      },
+      {
+        id: 'features-block',
+        type: 'block',
+        title: '💡 Key Features',
+        style: {
+          bgColor: '#ffffff',
+          padding: '2rem',
+          borderColor: '#e2e8f0'
+        },
+        children: [
+          {
+            id: 'feature-1',
+            type: 'inline',
+            title: '⚡ Fast Performance',
+            content: 'Lightning-fast loading times'
+          },
+          {
+            id: 'feature-2',
+            type: 'inline',
+            title: '🧱 Modular Design',
+            content: 'Build with reusable components'
+          },
+          {
+            id: 'feature-3',
+            type: 'inline',
+            title: '🎨 Beautiful UI',
+            content: 'Modern and responsive design'
+          }
+        ]
+      }
+    ]
   });
 
   // Load user and project data
@@ -65,7 +101,13 @@ export default function BuilderClient() {
       const response = await fetch(`/api/projects?id=${projectId}`);
       const data = await response.json();
       if (data.project) {
-        setFormData(data.project.data);
+        // Check if it's block-based data
+        if (data.project.data.blocks) {
+          setBlockData(data.project.data as BlockProjectData);
+        } else {
+          toast.error('This project was created with the old form builder and cannot be edited in the block builder');
+          router.push('/dashboard');
+        }
       } else {
         toast.error('Project not found or access denied');
         router.push('/dashboard');
@@ -78,34 +120,19 @@ export default function BuilderClient() {
     }
   };
 
-  const addFeature = () => {
-    if (newFeature.title && newFeature.description) {
-      setFormData(prev => ({
-        ...prev,
-        features: [...prev.features, { ...newFeature }]
-      }));
-      setNewFeature({ title: '', description: '', icon: 'Star' });
-    }
-  };
-
-  const removeFeature = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      features: prev.features.filter((_, i) => i !== index)
-    }));
-  };
-
   const [isPublishing, setIsPublishing] = useState(false);
 
   const handleSave = async () => {
-    if (!formData.projectName || !formData.tagline) {
-      toast.error('Please fill in at least the project name and tagline');
-      return;
-    }
     if (!user) {
       toast.error('Please sign in to save your project');
       return;
     }
+
+    if (!blockData.projectName) {
+      toast.error('Please enter a project name');
+      return;
+    }
+
     setIsPublishing(true);
     try {
       const response = await fetch('/api/projects', {
@@ -114,7 +141,7 @@ export default function BuilderClient() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          projectData: formData,
+          projectData: blockData,
           editId: editId || undefined
         }),
       });
@@ -177,7 +204,7 @@ export default function BuilderClient() {
                 </Button>
               </Link>
             )}
-            <h1 className="text-3xl font-bold text-gray-900">Page Builder</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Block Builder</h1>
           </div>
           <div className="flex gap-2">
             {user ? (
@@ -216,129 +243,29 @@ export default function BuilderClient() {
           </Card>
         )}
 
+        {/* Block Builder */}
         <div className="grid lg:grid-cols-2 gap-8">
-          {/* Form Editor */}
-          <div className="space-y-6">
+          {/* Block Editor */}
+          <div>
             <Card>
               <CardHeader>
-                <CardTitle>Project Details</CardTitle>
+                <CardTitle>Block Editor</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="projectName">Project Name</Label>
+              <CardContent>
+                <div className="mb-4">
+                  <Label htmlFor="blockProjectName">Project Name</Label>
                   <Input
                     className="mt-2"
-                    id="projectName"
-                    value={formData.projectName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, projectName: e.target.value }))}
+                    id="blockProjectName"
+                    value={blockData.projectName}
+                    onChange={(e) => setBlockData(prev => ({ ...prev, projectName: e.target.value }))}
                     placeholder="My Awesome Project"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="tagline">Tagline</Label>
-                  <Textarea
-                    className="mt-2"
-                    id="tagline"
-                    value={formData.tagline}
-                    onChange={(e) => setFormData(prev => ({ ...prev, tagline: e.target.value }))}
-                    placeholder="A brief description of what your project does..."
-                    rows={3}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="screenshot">Screenshot URL (optional)</Label>
-                  <Input
-                    className="mt-2"
-                    id="screenshot"
-                    value={formData.screenshot || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, screenshot: e.target.value }))}
-                    placeholder="https://example.com/screenshot.png"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Features Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Features</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Existing Features */}
-                {formData.features.map((feature, index) => (
-                  <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex-1">
-                      <h4 className="font-medium">{feature.title}</h4>
-                      <p className="text-sm text-gray-600">{feature.description}</p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeFeature(index)}
-                      className="cursor-pointer"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-
-                {/* Add New Feature */}
-                <div className="space-y-3 p-4 border-2 border-dashed border-gray-300 rounded-lg">
-                  <div>
-                    <Label htmlFor="featureTitle">Feature Title</Label>
-                    <Input
-                      className="mt-2"
-                      id="featureTitle"
-                      value={newFeature.title}
-                      onChange={(e) => setNewFeature(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="Fast Performance"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="featureDescription">Feature Description</Label>
-                    <Textarea
-                      className="mt-2"
-                      id="featureDescription"
-                      value={newFeature.description}
-                      onChange={(e) => setNewFeature(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Lightning-fast loading times..."
-                      rows={2}
-                    />
-                  </div>
-                  <Button onClick={addFeature} className="w-full cursor-pointer">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Feature
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* CTA Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Call to Action</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="ctaText">Button Text</Label>
-                  <Input
-                    className="mt-2"
-                    id="ctaText"
-                    value={formData.ctaText}
-                    onChange={(e) => setFormData(prev => ({ ...prev, ctaText: e.target.value }))}
-                    placeholder="Get Started"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="ctaUrl">Button URL</Label>
-                  <Input
-                    className="mt-2"
-                    id="ctaUrl"
-                    value={formData.ctaUrl}
-                    onChange={(e) => setFormData(prev => ({ ...prev, ctaUrl: e.target.value }))}
-                    placeholder="https://yourproject.com"
-                  />
-                </div>
+                <BlockEditor
+                  data={blockData}
+                  onUpdate={setBlockData}
+                />
               </CardContent>
             </Card>
           </div>
@@ -351,7 +278,7 @@ export default function BuilderClient() {
               </CardHeader>
               <CardContent>
                 <div className="border rounded-lg overflow-hidden">
-                  <ProjectPreview data={formData} />
+                  <ProjectBlockPreview data={blockData} />
                 </div>
               </CardContent>
             </Card>
