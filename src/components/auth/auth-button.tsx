@@ -38,7 +38,7 @@ export function AuthButton() {
     await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${window.location.protocol}//${window.location.host}/auth/callback?next=/dashboard`,
       },
     });
   };

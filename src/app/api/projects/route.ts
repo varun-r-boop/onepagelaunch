@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       slug: slug,
-      url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/${slug}`,
+      url: `${process.env.NEXT_PUBLIC_BASE_URL}/${slug}`,
       isEdit: !!editId
     });
 
