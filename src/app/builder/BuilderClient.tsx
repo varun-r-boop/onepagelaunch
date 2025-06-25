@@ -1,19 +1,17 @@
 'use client';
 
+import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { ProjectFormData } from '@/lib/types';
-import { ProjectPreview } from '@/components/project-preview';
-import { Plus, Trash2, ArrowLeft, Rocket, Save, User as UserIcon, LayoutGrid } from 'lucide-react';
+import { BlockProjectData } from '@/lib/types';
+import { ArrowLeft, User as UserIcon, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import { toast } from 'sonner';
+import BlockEditor from '@/components/block-editor/BlockEditor';
 
 export default function BuilderClient() {
   const router = useRouter();
@@ -23,18 +21,57 @@ export default function BuilderClient() {
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<ProjectFormData>({
-    projectName: '',
-    tagline: '',
-    features: [],
-    ctaText: 'Get Started',
-    ctaUrl: '',
-  });
+  
+  const [slug, setSlug] = useState('');
+  const [isSlugAvailable, setIsSlugAvailable] = useState<boolean | null>(null);
+  const [isCheckingSlug, setIsCheckingSlug] = useState(false);
 
-  const [newFeature, setNewFeature] = useState({
-    title: '',
-    description: '',
-    icon: 'Star'
+  // Block-based data
+  const [blockData, setBlockData] = useState<BlockProjectData>({
+    projectName: 'My Awesome Project',
+    blocks: [
+      {
+        id: 'hero-block',
+        type: 'block',
+        title: '🚀 Welcome to My Project',
+        content: 'This is a powerful tool that helps you build amazing things.',
+        style: {
+          bgColor: '#f8fafc',
+          padding: '2rem',
+          textAlign: 'center'
+        }
+      },
+      {
+        id: 'features-block',
+        type: 'block',
+        title: '💡 Key Features',
+        style: {
+          bgColor: '#ffffff',
+          padding: '2rem',
+          borderColor: '#e2e8f0'
+        },
+        children: [
+          {
+            id: 'feature-1',
+            type: 'inline',
+            title: '⚡ Fast Performance',
+            content: 'Lightning-fast loading times'
+          },
+          {
+            id: 'feature-2',
+            type: 'inline',
+            title: '🧱 Modular Design',
+            content: 'Build with reusable components'
+          },
+          {
+            id: 'feature-3',
+            type: 'inline',
+            title: '🎨 Beautiful UI',
+            content: 'Modern and responsive design'
+          }
+        ]
+      }
+    ]
   });
 
   // Load user and project data
@@ -65,7 +102,15 @@ export default function BuilderClient() {
       const response = await fetch(`/api/projects?id=${projectId}`);
       const data = await response.json();
       if (data.project) {
-        setFormData(data.project.data);
+        // Check if it's block-based data
+        if (data.project.data.blocks) {
+          setBlockData(data.project.data as BlockProjectData);
+          setSlug(data.project.slug);
+          setIsSlugAvailable(true);
+        } else {
+          toast.error('This project was created with the old form builder and cannot be edited in the block builder');
+          router.push('/dashboard');
+        }
       } else {
         toast.error('Project not found or access denied');
         router.push('/dashboard');
@@ -78,34 +123,27 @@ export default function BuilderClient() {
     }
   };
 
-  const addFeature = () => {
-    if (newFeature.title && newFeature.description) {
-      setFormData(prev => ({
-        ...prev,
-        features: [...prev.features, { ...newFeature }]
-      }));
-      setNewFeature({ title: '', description: '', icon: 'Star' });
-    }
-  };
-
-  const removeFeature = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      features: prev.features.filter((_, i) => i !== index)
-    }));
-  };
-
   const [isPublishing, setIsPublishing] = useState(false);
 
   const handleSave = async () => {
-    if (!formData.projectName || !formData.tagline) {
-      toast.error('Please fill in at least the project name and tagline');
-      return;
-    }
     if (!user) {
       toast.error('Please sign in to save your project');
       return;
     }
+
+    if (!blockData.projectName) {
+      toast.error('Please enter a project name');
+      return;
+    }
+    if (!slug) {
+      toast.error('Please enter a URL slug');
+      return;
+    }
+    if (!editId && !isSlugAvailable) {
+      toast.error('This URL slug is already taken');
+      return;
+    }
+
     setIsPublishing(true);
     try {
       const response = await fetch('/api/projects', {
@@ -114,7 +152,7 @@ export default function BuilderClient() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          projectData: formData,
+          projectData: { ...blockData, slug },
           editId: editId || undefined
         }),
       });
@@ -156,207 +194,132 @@ export default function BuilderClient() {
     }
   };
 
+  const checkSlugAvailability = async (currentSlug: string) => {
+    if (!currentSlug) {
+      setIsSlugAvailable(null);
+      return;
+    }
+    setIsCheckingSlug(true);
+    try {
+      const response = await fetch(`/api/projects/public/${currentSlug}`);
+      setIsSlugAvailable(!response.ok);
+    } catch (error) {
+      console.error('Error checking slug', error);
+      // Cautiously assume it's not available on error
+      setIsSlugAvailable(false);
+    } finally {
+      setIsCheckingSlug(false);
+    }
+  };
+  
+  // Debounce slug check
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      // Skip slug checking if we are editing an existing project
+      if (editId) {
+        setIsSlugAvailable(true);
+        return;
+      }
+      checkSlugAvailability(slug);
+    }, 500);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [slug, editId]);
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            {user ? (
-              <Link href="/dashboard">
-                <Button variant="outline" size="sm" className="cursor-pointer">
-                  <LayoutGrid className="h-4 w-4 mr-2" />
-                  Dashboard
-                </Button>
-              </Link>
-            ) : (
-              <Link href="/">
-                <Button variant="outline" size="sm" className="cursor-pointer">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Home
-                </Button>
-              </Link>
-            )}
-            <h1 className="text-3xl font-bold text-gray-900">Page Builder</h1>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Header Bar */}
+      <div className="flex justify-between items-center p-4 bg-white border-b border-gray-200">
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard" className="text-sm font-medium text-gray-600 hover:text-black">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <div className="w-64">
+            <Input
+              placeholder="Project Name"
+              value={blockData.projectName}
+              onChange={(e) => setBlockData(prev => ({ ...prev, projectName: e.target.value }))}
+              className="font-semibold text-lg"
+            />
           </div>
-          <div className="flex gap-2">
-            {user ? (
-              <Button onClick={handleSave} size="lg" disabled={isPublishing || loading} className="cursor-pointer">
-                <Save className="h-4 w-4 mr-2" />
-                {isPublishing ? (editId ? 'Updating...' : 'Saving...') : (editId ? 'Update' : 'Save & Publish')}
-              </Button>
-            ) : (
-              <Button onClick={handleSignInPrompt} size="lg" variant="outline" className="cursor-pointer">
-                <Rocket className="h-4 w-4 mr-2" />
-                Sign In to Publish
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Sign-in prompt for non-authenticated users */}
-        {!user && (
-          <Card className="mb-8 border-blue-200 bg-blue-50">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="text-blue-600">
-                  <UserIcon className="h-8 w-8" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-blue-900">Sign In Required</h3>
-                  <p className="text-blue-700 text-sm">
-                    You must sign in to save and publish your projects. Your projects will be saved to your account and remain editable.
-                  </p>
-                </div>
-                <Button onClick={handleSignInPrompt} variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-100 cursor-pointer">
-                  Sign In with GitHub
-                </Button>
+          <div className="w-64">
+            <div className="relative">
+              <Input
+                placeholder="url-slug"
+                value={slug}
+                disabled={!!editId}
+                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                title={editId ? "URL cannot be changed for published projects" : "Enter a unique URL for your project"}
+              />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+                {editId ? (
+                  <span className="text-gray-500">Locked</span>
+                ) : isCheckingSlug ? (
+                  <span className="text-gray-500">Checking...</span>
+                ) : isSlugAvailable === true ? (
+                  <span className="text-green-500">Available</span>
+                ) : isSlugAvailable === false ? (
+                  <span className="text-red-500">Taken</span>
+                ) : null}
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Form Editor */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Project Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="projectName">Project Name</Label>
-                  <Input
-                    className="mt-2"
-                    id="projectName"
-                    value={formData.projectName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, projectName: e.target.value }))}
-                    placeholder="My Awesome Project"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="tagline">Tagline</Label>
-                  <Textarea
-                    className="mt-2"
-                    id="tagline"
-                    value={formData.tagline}
-                    onChange={(e) => setFormData(prev => ({ ...prev, tagline: e.target.value }))}
-                    placeholder="A brief description of what your project does..."
-                    rows={3}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="screenshot">Screenshot URL (optional)</Label>
-                  <Input
-                    className="mt-2"
-                    id="screenshot"
-                    value={formData.screenshot || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, screenshot: e.target.value }))}
-                    placeholder="https://example.com/screenshot.png"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Features Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Features</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Existing Features */}
-                {formData.features.map((feature, index) => (
-                  <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex-1">
-                      <h4 className="font-medium">{feature.title}</h4>
-                      <p className="text-sm text-gray-600">{feature.description}</p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeFeature(index)}
-                      className="cursor-pointer"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-
-                {/* Add New Feature */}
-                <div className="space-y-3 p-4 border-2 border-dashed border-gray-300 rounded-lg">
-                  <div>
-                    <Label htmlFor="featureTitle">Feature Title</Label>
-                    <Input
-                      className="mt-2"
-                      id="featureTitle"
-                      value={newFeature.title}
-                      onChange={(e) => setNewFeature(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="Fast Performance"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="featureDescription">Feature Description</Label>
-                    <Textarea
-                      className="mt-2"
-                      id="featureDescription"
-                      value={newFeature.description}
-                      onChange={(e) => setNewFeature(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Lightning-fast loading times..."
-                      rows={2}
-                    />
-                  </div>
-                  <Button onClick={addFeature} className="w-full cursor-pointer">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Feature
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* CTA Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Call to Action</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="ctaText">Button Text</Label>
-                  <Input
-                    className="mt-2"
-                    id="ctaText"
-                    value={formData.ctaText}
-                    onChange={(e) => setFormData(prev => ({ ...prev, ctaText: e.target.value }))}
-                    placeholder="Get Started"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="ctaUrl">Button URL</Label>
-                  <Input
-                    className="mt-2"
-                    id="ctaUrl"
-                    value={formData.ctaUrl}
-                    onChange={(e) => setFormData(prev => ({ ...prev, ctaUrl: e.target.value }))}
-                    placeholder="https://yourproject.com"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Live Preview */}
-          <div className="lg:sticky lg:top-8">
-            <Card className="h-fit">
-              <CardHeader>
-                <CardTitle>Live Preview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="border rounded-lg overflow-hidden">
-                  <ProjectPreview data={formData} />
-                </div>
-              </CardContent>
-            </Card>
+            </div>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          {user ? (
+            <>
+              <Button
+                onClick={handleSave}
+                disabled={isPublishing || loading || (!editId && !isSlugAvailable)}
+              >
+                {isPublishing ? (editId ? 'Updating...' : 'Publishing...') : (editId ? 'Update' : 'Publish')}
+              </Button>
+            </>
+          ) : (
+            <Button onClick={handleSignInPrompt}>
+              <UserIcon className="h-4 w-4 mr-2" />
+              Sign in to Publish
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-grow pt-0">
+        <BlockEditor
+          data={blockData}
+          onUpdate={setBlockData}
+        />
+      </div>
+
+      {/* Floating Toolbar */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <Button
+          onClick={() => {
+            const newBlock = {
+              id: `block-${Date.now()}`,
+              type: 'block' as const,
+              title: 'New Block',
+              content: 'Add your content here...',
+              style: {
+                bgColor: '#ffffff',
+                padding: '2rem',
+                borderColor: '#e2e8f0',
+                textAlign: 'left' as const
+              }
+            };
+            setBlockData(prev => ({
+              ...prev,
+              blocks: [...prev.blocks, newBlock]
+            }));
+          }}
+          className="h-12 w-12 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 cursor-pointer"
+          title="Add New Block"
+        >
+          <Plus className="h-5 w-5" />
+        </Button>
       </div>
     </div>
   );

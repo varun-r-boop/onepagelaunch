@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, Trash2, Eye } from 'lucide-react';
 import Link from 'next/link';
-import { SupabaseProject } from '@/lib/types';
+import { SupabaseProject, BlockProjectData } from '@/lib/types';
 import { User } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 
@@ -56,7 +56,11 @@ export default function Dashboard() {
       if (error) {
         console.error('Error fetching projects:', error);
       } else {
-        setProjects(data || []);
+        // Filter to only show block-based projects
+        const blockProjects = (data || []).filter(project => 
+          project.data.blocks && Array.isArray(project.data.blocks)
+        );
+        setProjects(blockProjects);
       }
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -95,6 +99,11 @@ export default function Dashboard() {
         onClick: () => {},
       },
     });
+  };
+
+  const getBlockCount = (project: SupabaseProject) => {
+    const blockData = project.data as BlockProjectData;
+    return blockData.blocks?.length || 0;
   };
 
   return (
@@ -140,7 +149,7 @@ export default function Dashboard() {
                 <div className="text-6xl mb-4">🚀</div>
                 <CardTitle className="mb-2">No projects yet</CardTitle>
                 <CardDescription className="mb-4">
-                  Create your first one-page website to get started!
+                  Create your first block-based website to get started!
                 </CardDescription>
                 <Link href="/builder">
                   <Button>
@@ -152,53 +161,56 @@ export default function Dashboard() {
             </Card>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {projects.map((project) => (
-                <Card key={project.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{project.data.projectName}</CardTitle>
-                        <CardDescription className="mt-1 line-clamp-2">
-                          {project.data.tagline}
-                        </CardDescription>
+              {projects.map((project) => {
+                const blockData = project.data as BlockProjectData;
+                return (
+                  <Card key={project.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg">{blockData.projectName}</CardTitle>
+                          <CardDescription className="mt-1 line-clamp-2">
+                            Block-based project with {getBlockCount(project)} blocks
+                          </CardDescription>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 mt-2">
-                      <Badge variant="outline" className="text-xs">
-                        {project.slug}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {project.data.features.length} features
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex gap-2">
-                      <Link href={`/${project.slug}`} target="_blank">
-                        <Button variant="outline" size="sm" className="cursor-pointer">
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge variant="outline" className="text-xs">
+                          {project.slug}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {getBlockCount(project)} blocks
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex gap-2">
+                        <Link href={`/${project.slug}`} target="_blank">
+                          <Button variant="outline" size="sm" className="cursor-pointer">
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                        </Link>
+                        <Link href={`/builder?edit=${project.id}`}>
+                          <Button variant="outline" size="sm" className="cursor-pointer">
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </Button>
+                        </Link>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => deleteProject(project.id)}
+                          className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
                         </Button>
-                      </Link>
-                      <Link href={`/builder?edit=${project.id}`}>
-                        <Button variant="outline" size="sm" className="cursor-pointer">
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </Button>
-                      </Link>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => deleteProject(project.id)}
-                        className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
