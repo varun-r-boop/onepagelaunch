@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { BlockProjectData } from '@/lib/types';
-import slugify from 'slugify';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: NextRequest) {
@@ -41,7 +40,12 @@ export async function POST(request: NextRequest) {
 
       // If slug has changed, check for uniqueness
       if (slug !== existingProject.slug) {
-        const { data: slugCheck } = await supabase.from('projects').select('id').eq('slug', slug).single();
+        const { data: slugCheck } = await supabase
+          .from('projects')
+          .select('id')
+          .eq('slug', slug)
+          .neq('id', editId)
+          .single();
         if (slugCheck) {
           return NextResponse.json({ error: 'This URL slug is already taken.' }, { status: 409 });
         }

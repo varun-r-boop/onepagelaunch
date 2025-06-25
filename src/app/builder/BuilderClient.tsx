@@ -4,11 +4,9 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { BlockProjectData } from '@/lib/types';
-import { ArrowLeft, Rocket, Save, User as UserIcon, LayoutGrid, Plus } from 'lucide-react';
+import { ArrowLeft, User as UserIcon, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
@@ -141,7 +139,7 @@ export default function BuilderClient() {
       toast.error('Please enter a URL slug');
       return;
     }
-    if (!isSlugAvailable) {
+    if (!editId && !isSlugAvailable) {
       toast.error('This URL slug is already taken');
       return;
     }
@@ -217,8 +215,8 @@ export default function BuilderClient() {
   // Debounce slug check
   useEffect(() => {
     const handler = setTimeout(() => {
-      // Don't check if we are editing an existing project
-      if (editId && slug === blockData.slug) {
+      // Skip slug checking if we are editing an existing project
+      if (editId) {
         setIsSlugAvailable(true);
         return;
       }
@@ -228,7 +226,7 @@ export default function BuilderClient() {
     return () => {
       clearTimeout(handler);
     };
-  }, [slug, editId, blockData.slug]);
+  }, [slug, editId]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -251,10 +249,14 @@ export default function BuilderClient() {
               <Input
                 placeholder="url-slug"
                 value={slug}
+                disabled={!!editId}
                 onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                title={editId ? "URL cannot be changed for published projects" : "Enter a unique URL for your project"}
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
-                {isCheckingSlug ? (
+                {editId ? (
+                  <span className="text-gray-500">Locked</span>
+                ) : isCheckingSlug ? (
                   <span className="text-gray-500">Checking...</span>
                 ) : isSlugAvailable === true ? (
                   <span className="text-green-500">Available</span>
@@ -270,7 +272,7 @@ export default function BuilderClient() {
             <>
               <Button
                 onClick={handleSave}
-                disabled={isPublishing || loading || !isSlugAvailable}
+                disabled={isPublishing || loading || (!editId && !isSlugAvailable)}
               >
                 {isPublishing ? (editId ? 'Updating...' : 'Publishing...') : (editId ? 'Update' : 'Publish')}
               </Button>

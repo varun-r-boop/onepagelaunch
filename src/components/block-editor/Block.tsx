@@ -3,18 +3,21 @@
 import * as React from 'react';
 import { Block, BlockStyle } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { HexColorPicker } from 'react-colorful';
 import { 
   Copy, 
   Trash2, 
-  Type, 
   Palette,
-  Move,
-  Edit3,
-  Square,
   Minus,
+  Square,
   Maximize2,
+  AlignLeft,
+  AlignJustify,
   Square as BorderIcon,
-  SplitSquareHorizontal,
+  RectangleHorizontal,
+  RectangleVertical,
+  BrickWall,
+  Cuboid,
 } from 'lucide-react';
 
 interface BlockProps {
@@ -22,8 +25,6 @@ interface BlockProps {
   onUpdate: (updatedBlock: Block) => void;
   onDelete: () => void;
   onDuplicate: () => void;
-  onMoveUp?: () => void;
-  onMoveDown?: () => void;
   isSelected?: boolean;
   onSelect?: () => void;
   onDrop?: (draggedId: string, targetId: string, position: 'before' | 'after' | 'inside') => void;
@@ -35,29 +36,52 @@ export default function BlockComponent({
   onUpdate,
   onDelete,
   onDuplicate,
-  onMoveUp,
-  onMoveDown,
   isSelected = false,
   onSelect,
   onDrop,
   depth = 0
 }: BlockProps) {
-  const [isEditing, setIsEditing] = React.useState(false);
   const [showBubbleMenu, setShowBubbleMenu] = React.useState(false);
   const [isDragging, setIsDragging] = React.useState(false);
   const [isDragOver, setIsDragOver] = React.useState(false);
   const [dropPosition, setDropPosition] = React.useState<'before' | 'after' | 'inside' | null>(null);
   const [showColorPicker, setShowColorPicker] = React.useState(false);
   const [showBorderColorPicker, setShowBorderColorPicker] = React.useState(false);
+  const [currentSize, setCurrentSize] = React.useState<'small' | 'medium' | 'large'>('large');
   const blockRef = React.useRef<HTMLDivElement>(null);
   const titleRef = React.useRef<HTMLDivElement>(null);
   const contentRef = React.useRef<HTMLDivElement>(null);
+
+  // Set current size based on block width
+  React.useEffect(() => {
+    const width = block.style?.width || '100%';
+    if (width === '25%') setCurrentSize('small');
+    else if (width === '50%') setCurrentSize('medium');
+    else setCurrentSize('large');
+  }, [block.style?.width]);
+
+  // Close color pickers when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showColorPicker || showBorderColorPicker) {
+        const target = event.target as HTMLElement;
+        if (!target.closest('.color-picker-container')) {
+          setShowColorPicker(false);
+          setShowBorderColorPicker(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showColorPicker, showBorderColorPicker]);
 
   const handleTitleEdit = () => {
     if (titleRef.current) {
       titleRef.current.contentEditable = 'true';
       titleRef.current.focus();
-      setIsEditing(true);
     }
   };
 
@@ -65,7 +89,6 @@ export default function BlockComponent({
     if (contentRef.current) {
       contentRef.current.contentEditable = 'true';
       contentRef.current.focus();
-      setIsEditing(true);
       // Select all text if it's the default content
       if (contentRef.current.textContent === 'Add your content here...') {
         const range = document.createRange();
@@ -80,7 +103,6 @@ export default function BlockComponent({
   };
 
   const handleBlur = () => {
-    setIsEditing(false);
     if (titleRef.current) {
       titleRef.current.contentEditable = 'false';
       const newTitle = titleRef.current.textContent || '';
@@ -109,18 +131,24 @@ export default function BlockComponent({
     });
   };
 
-  const changeSize = (size: 'small' | 'medium' | 'large') => {
+  const cycleSize = () => {
+    const sizeOrder = ['small', 'medium', 'large'] as const;
+    const currentIndex = sizeOrder.indexOf(currentSize);
+    const nextIndex = (currentIndex + 1) % sizeOrder.length;
+    const nextSize = sizeOrder[nextIndex];
+    
     const widthMap = {
       small: '25%',
       medium: '50%',
       large: '100%'
     };
-    updateStyle({ width: widthMap[size] });
+    setCurrentSize(nextSize);
+    updateStyle({ width: widthMap[nextSize] });
   };
 
   const changeBackgroundColor = (color: string) => {
     updateStyle({ bgColor: color });
-    setShowColorPicker(false);
+    // Don't close the picker immediately for better UX
   };
 
   const changeBorderColor = (color: string) => {
@@ -129,12 +157,7 @@ export default function BlockComponent({
     } else {
       updateStyle({ borderColor: color });
     }
-    setShowBorderColorPicker(false);
-  };
-
-  const toggleLayout = () => {
-    const newLayout = block.style?.layout === 'row' ? 'column' : 'row';
-    updateStyle({ layout: newLayout });
+    // Don't close the picker immediately for better UX
   };
 
   const getBlockStyles = () => {
@@ -220,13 +243,6 @@ export default function BlockComponent({
     '#fdf4ff', '#fef7ff', '#fffbeb', '#f0fdf4'
   ];
 
-  const predefinedBorderColors = [
-    '#000000', '#374151', '#6b7280', '#9ca3af',
-    '#dc2626', '#ea580c', '#d97706', '#65a30d',
-    '#059669', '#0891b2', '#2563eb', '#7c3aed',
-    '#db2777', '#be185d', '#be123c', '#881337'
-  ];
-
   return (
     <div
       ref={blockRef}
@@ -250,73 +266,36 @@ export default function BlockComponent({
         </>
       )}
 
-      {/* Enhanced Bubble Menu */}
+      {/* Minimalistic Bubble Menu */}
       {showBubbleMenu && (
-        <div className="absolute -bottom-15 left-1/2 transform -translate-x-1/2 z-10 bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-2xl p-3 opacity-95">
-          <div className="flex gap-3">
-            {/* Size Controls */}
-            <div className="flex gap-1 bg-gray-50/80 rounded-lg p-1">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => changeSize('small')}
-                title="Small width (25%)"
-                className="h-7 w-7 p-0 rounded-md hover:bg-white hover:shadow-sm transition-all duration-200"
-              >
-                <Minus className="h-3 w-3" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => changeSize('medium')}
-                title="Medium width (50%)"
-                className="h-7 w-7 p-0 rounded-md hover:bg-white hover:shadow-sm transition-all duration-200"
-              >
-                <Square className="h-3 w-3" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => changeSize('large')}
-                title="Full width (100%)"
-                className="h-7 w-7 p-0 rounded-md hover:bg-white hover:shadow-sm transition-all duration-200"
-              >
-                <Maximize2 className="h-3 w-3" />
-              </Button>
-            </div>
-
+        <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 z-10 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg p-2">
+          <div className="flex items-center gap-1">
             {/* Block/Inline Toggle */}
             <Button
               size="sm"
               variant="ghost"
               onClick={toggleBlockType}
               title={`Change to ${block.type === 'block' ? 'inline' : 'block'}`}
-              className="h-8 w-8 p-0 rounded-xl hover:bg-gray-50 hover:shadow-sm transition-all duration-200"
+              className="h-7 w-7 p-0 rounded-md hover:bg-gray-100 transition-colors"
             >
-              <Type className="h-4 w-4" />
+              {block.type === 'block' ? (
+                <Cuboid className="h-3.5 w-3.5" />
+              ) : (
+                <BrickWall className="h-3.5 w-3.5" />
+              )}
             </Button>
 
-            {block.children && block.children.length > 0 && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={toggleLayout}
-                title={`Layout: ${block.style?.layout === 'row' ? 'Side-by-side' : 'Stacked'}`}
-                className="h-8 w-8 p-0 rounded-xl hover:bg-gray-50 hover:shadow-sm transition-all duration-200"
-              >
-                <SplitSquareHorizontal className="h-4 w-4" />
-              </Button>
-            )}
-
-            {/* Edit Content */}
+            {/* Size Control - Box Icons */}
             <Button
               size="sm"
               variant="ghost"
-              onClick={handleContentEdit}
-              title="Edit content"
-              className="h-8 w-8 p-0 rounded-xl hover:bg-gray-50 hover:shadow-sm transition-all duration-200"
+              onClick={cycleSize}
+              title={`Size: ${currentSize} (click to cycle)`}
+              className="h-7 w-7 p-0 rounded-md hover:bg-gray-100 transition-colors"
             >
-              <Edit3 className="h-4 w-4" />
+              {currentSize === 'small' && <Square className="h-3.5 w-3.5" />}
+              {currentSize === 'medium' && <RectangleVertical className="h-3.5 w-3.5" />}
+              {currentSize === 'large' && <RectangleHorizontal className="h-3.5 w-3.5" />}
             </Button>
 
             {/* Background Color */}
@@ -326,19 +305,24 @@ export default function BlockComponent({
                 variant="ghost"
                 onClick={() => setShowColorPicker(!showColorPicker)}
                 title="Background color"
-                className="h-8 w-8 p-0 rounded-xl hover:bg-gray-50 hover:shadow-sm transition-all duration-200"
+                className="h-7 w-7 p-0 rounded-md hover:bg-gray-100 transition-colors"
               >
-                <Palette className="h-4 w-4" />
+                <Palette className="h-3.5 w-3.5" />
               </Button>
               
               {showColorPicker && (
-                <div className="absolute top-10 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-2xl p-3 z-20">
-                  <div className="grid grid-cols-4 gap-2">
-                    {predefinedColors.map((color) => (
+                <div className="absolute top-8 left-1/2 transform -translate-x-1/2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-20 color-picker-container">
+                  <HexColorPicker
+                    color={block.style?.bgColor || '#ffffff'}
+                    onChange={changeBackgroundColor}
+                    className="w-32 h-32"
+                  />
+                  <div className="mt-2 flex gap-1">
+                    {predefinedColors.slice(0, 6).map((color) => (
                       <button
                         key={color}
                         onClick={() => changeBackgroundColor(color)}
-                        className="w-7 h-7 rounded-xl border-2 border-gray-200 hover:scale-110 hover:border-gray-400 transition-all duration-200 shadow-sm"
+                        className="w-6 h-6 rounded border border-gray-200 hover:scale-110 transition-transform"
                         style={{ backgroundColor: color }}
                         title={color}
                       />
@@ -355,27 +339,31 @@ export default function BlockComponent({
                 variant="ghost"
                 onClick={() => setShowBorderColorPicker(!showBorderColorPicker)}
                 title="Border color"
-                className="h-8 w-8 p-0 rounded-xl hover:bg-gray-50 hover:shadow-sm transition-all duration-200"
+                className="h-7 w-7 p-0 rounded-md hover:bg-gray-100 transition-colors"
               >
-                <BorderIcon className="h-4 w-4" />
+                <BorderIcon className="h-3.5 w-3.5" />
               </Button>
               
               {showBorderColorPicker && (
-                <div className="absolute top-10 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-2xl p-3 z-20">
-                  <div className="grid grid-cols-4 gap-2">
-                    {/* Remove Border Option */}
+                <div className="absolute top-8 left-1/2 transform -translate-x-1/2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-20 color-picker-container">
+                  <HexColorPicker
+                    color={block.style?.borderColor || '#000000'}
+                    onChange={changeBorderColor}
+                    className="w-32 h-32"
+                  />
+                  <div className="mt-2 flex gap-1">
                     <button
                       onClick={() => changeBorderColor('transparent')}
-                      className="w-7 h-7 rounded-xl border-2 border-gray-200 hover:scale-110 hover:border-gray-400 transition-all duration-200 shadow-sm bg-white flex items-center justify-center"
-                      title="Remove border"
+                      className="w-6 h-6 rounded border border-gray-200 hover:scale-110 transition-transform bg-white flex items-center justify-center"
+                      title="No border"
                     >
                       <Minus className="h-3 w-3 text-gray-400" />
                     </button>
-                    {predefinedBorderColors.map((color) => (
+                    {predefinedColors.slice(0, 5).map((color) => (
                       <button
                         key={color}
                         onClick={() => changeBorderColor(color)}
-                        className="w-7 h-7 rounded-xl border-2 border-gray-200 hover:scale-110 hover:border-gray-400 transition-all duration-200 shadow-sm"
+                        className="w-6 h-6 rounded border border-gray-200 hover:scale-110 transition-transform"
                         style={{ backgroundColor: color }}
                         title={color}
                       />
@@ -390,10 +378,10 @@ export default function BlockComponent({
               size="sm"
               variant="ghost"
               onClick={onDuplicate}
-              title="Duplicate block"
-              className="h-8 w-8 p-0 rounded-xl hover:bg-gray-50 hover:shadow-sm transition-all duration-200"
+              title="Duplicate"
+              className="h-7 w-7 p-0 rounded-md hover:bg-gray-100 transition-colors"
             >
-              <Copy className="h-4 w-4" />
+              <Copy className="h-3.5 w-3.5" />
             </Button>
 
             {/* Delete */}
@@ -401,10 +389,10 @@ export default function BlockComponent({
               size="sm"
               variant="ghost"
               onClick={onDelete}
-              title="Delete block"
-              className="h-8 w-8 p-0 rounded-xl hover:bg-red-50 hover:text-red-600 transition-all duration-200"
+              title="Delete"
+              className="h-7 w-7 p-0 rounded-md hover:bg-red-50 hover:text-red-600 transition-colors"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
