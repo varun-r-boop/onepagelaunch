@@ -3,8 +3,8 @@ import { Toaster } from "sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "OnePageLaunch - Create Beautiful One-Page Websites",
-  description: "Build stunning, bento-style one-page websites for your side projects in minutes. No login required.",
+  title: "OnePageLaunch – Launch Stunning Sites, Brick by Brick",
+  description: "Build stunning, block-style one-page websites for your side projects in minutes.",
 };
 
 export default function RootLayout({
