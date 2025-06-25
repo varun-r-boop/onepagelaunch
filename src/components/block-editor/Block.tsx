@@ -10,14 +10,11 @@ import {
   Palette,
   Minus,
   Square,
-  Maximize2,
-  AlignLeft,
-  AlignJustify,
-  Square as BorderIcon,
   RectangleHorizontal,
   RectangleVertical,
-  BrickWall,
   Cuboid,
+  BrickWall,
+  Square as BorderIcon,
 } from 'lucide-react';
 
 interface BlockProps {
