@@ -18,7 +18,7 @@ export default function Home() {
             OnePageLaunch
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Create beautiful, bento-style one-page websites for your side projects in minutes. 
+            Create beautiful, block-style one-page websites for your side projects in minutes. 
             Sign in to save and manage your projects.
           </p>
           <div className="flex gap-4 justify-center">
@@ -40,7 +40,7 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <CardDescription>
-                Build your one-pager in minutes with our intuitive form-based editor
+                Build your one-pager in minutes with our intuitive block-based editor
               </CardDescription>
             </CardContent>
           </Card>
@@ -52,7 +52,7 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <CardDescription>
-                Modern bento-grid layout that makes your features look stunning
+                Modern block-grid layout that makes your features look stunning
               </CardDescription>
             </CardContent>
           </Card>
