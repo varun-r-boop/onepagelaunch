@@ -29,6 +29,37 @@ export interface BlockProjectData {
   updatedAt?: Date;
 }
 
+// Legacy form-based types for backward compatibility
+export interface ProjectFormData {
+  projectName: string;
+  tagline: string;
+  features: Array<{
+    title: string;
+    description: string;
+    icon: string;
+  }>;
+  ctaText: string;
+  ctaUrl: string;
+  screenshot?: string;
+}
+
+export interface ProjectData {
+  id: string;
+  slug: string;
+  projectName: string;
+  tagline: string;
+  features: Array<{
+    title: string;
+    description: string;
+    icon: string;
+  }>;
+  ctaText: string;
+  ctaUrl: string;
+  screenshot?: string;
+  createdAt: Date;
+  userId: string;
+}
+
 // Supabase database types
 export interface SupabaseProject {
   id: string;
