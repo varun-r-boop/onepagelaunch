@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import BlockComponent from './Block';
 import { BlockProjectData, Block } from '@/lib/types';
-import { Button } from '@/components/ui/button';
-import { Plus, Trash2 } from 'lucide-react';
+//import { Button } from '@/components/ui/button';
+//import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface BlockEditorProps {
@@ -96,6 +96,7 @@ function findAndInsertBlock(
 export default function BlockEditor({ data, onUpdate }: BlockEditorProps) {
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const addBlock = () => {
     const newBlock: Block = {
       id: `block-${Date.now()}`,
@@ -250,7 +251,7 @@ export default function BlockEditor({ data, onUpdate }: BlockEditorProps) {
     >
       {/* Blocks Container */}
       <div className="w-full px-8 py-6">
-        {data.blocks.map((block, index) => (
+        {data.blocks.map((block) => (
           <BlockComponent
             key={block.id}
             block={block}
