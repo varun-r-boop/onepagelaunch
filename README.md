@@ -1,230 +1,78 @@
 # OnePageLaunch
 
-A beautiful, no-login MVP for creating bento-style one-page websites for your side projects. Built with Next.js, Tailwind CSS, ShadCN UI, and Vercel KV for persistent storage.
+Create beautiful, bento-style landing pages for your side projects in minutes. No design skills required.
 
-## Features
+## What is OnePageLaunch?
 
-- 🔐 **User Authentication** - GitHub OAuth via Supabase
-- 📊 **User Dashboard** - Manage all your projects in one place  
-- 🚀 **Anonymous publishing** - Create projects without signing in
-- 🎨 **Bento-style design** - Modern grid layout for features
-- 📱 **Fully responsive** - Mobile-friendly design
-- 💾 **Dual storage** - Supabase for user projects + Redis for fast public access
-- 📤 **Export functionality** - Download as static HTML
-- 🔗 **Shareable links** - Works across devices and browsers
-- ⚡ **Live preview** - See changes in real-time
-- ✏️ **Edit projects** - Update your saved projects anytime
+OnePageLaunch is a simple tool that helps you create professional-looking landing pages for your side projects, MVPs, or any idea you want to showcase. Think of it as a "Linktree meets Notion" but specifically designed for developers and creators who want to quickly launch a project page.
 
-## Tech Stack
+## Key Features
 
-- **Framework**: Next.js 15 with App Router
-- **Styling**: Tailwind CSS
-- **Components**: ShadCN UI
-- **Authentication**: Supabase Auth (GitHub OAuth)
-- **Database**: Supabase (PostgreSQL) + Redis (for public pages)
-- **Icons**: Lucide React
-- **Language**: TypeScript
+### 🚀 **Instant Publishing**
+- Create and publish your project page in under 2 minutes
+- No account required - start building immediately
+- Get a shareable link instantly
 
-## Getting Started
+### 🎨 **Beautiful Bento-Style Design**
+- Modern grid layout that showcases your project features
+- Clean, professional design that works for any type of project
+- Fully responsive - looks great on all devices
 
-### Prerequisites
+### 📝 **Simple Project Setup**
+- Project name and tagline
+- Add up to 6 key features with icons
+- Include a screenshot or demo image
+- Add a call-to-action button
 
-- Node.js 18+ 
-- A Supabase account (for authentication and user projects)
-- A Vercel account (for Redis storage - optional for public pages)
+### 🔐 **Optional User Accounts**
+- Sign in with GitHub to save and manage your projects
+- Edit your projects anytime
+- Keep all your project pages in one dashboard
+- Maintain the same URL when you update content
 
-### Installation
+### 📱 **Perfect for Sharing**
+- Each project gets a unique, memorable URL
+- Works across all devices and browsers
+- Built-in social sharing features
+- Export as static HTML for self-hosting
 
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd onepagelaunch
-```
+## Perfect For
 
-2. Install dependencies:
-```bash
-npm install
-```
+- **Side Projects** - Showcase your latest coding project
+- **MVPs** - Get early users and feedback
+- **Portfolio Pieces** - Display your work professionally
+- **Product Launches** - Create landing pages for new features
+- **Open Source Projects** - Present your contributions
+- **Hackathon Projects** - Share your weekend builds
 
-3. Set up Supabase:
-   - Go to [Supabase](https://supabase.com) and create a new project
-   - In Authentication > Providers, enable GitHub OAuth
-   - In SQL Editor, run the schema from `supabase-schema.sql`
-   - Copy your project URL and anon key
+## How It Works
 
-4. Set up Redis (Optional - for fast public page access):
-   - Go to [Vercel Dashboard](https://vercel.com/dashboard)
-   - Create a new Redis database
-   - Copy the Redis URL
+1. **Start Building** - Click "Start Building" on the homepage
+2. **Fill the Form** - Add your project details and features
+3. **Preview Live** - See your page update in real-time as you type
+4. **Publish** - Get your shareable link instantly
+5. **Share** - Send your link to friends, social media, or anywhere
 
-5. Create `.env.local` file:
-```bash
-# Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+## Example Use Cases
 
-# Redis Configuration (Optional - for public page caching)
-REDIS_URL=your_redis_url
+- **Developer Portfolio** - Showcase your latest React app with key features
+- **SaaS Landing Page** - Present your new tool with benefits and pricing
+- **Open Source Project** - Explain what your library does and how to contribute
+- **Side Hustle** - Market your freelance services or digital products
+- **Event Page** - Create a simple page for meetups or workshops
 
-# Base URL for generating shareable links
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
-```
+## Why OnePageLaunch?
 
-6. Run the development server:
-```bash
-npm run dev
-```
+- **No Design Skills Needed** - Professional templates that look great out of the box
+- **Lightning Fast** - From idea to published page in minutes
+- **No Maintenance** - No servers, domains, or hosting to manage
+- **Always Accessible** - Your pages work everywhere, all the time
+- **Developer Friendly** - Built by developers, for developers
 
-Open [http://localhost:3000](http://localhost:3000) to see the application.
+## Get Started
 
-## Usage
-
-### 🚀 **Anonymous Publishing (No Login)**
-
-1. **Visit the homepage** - Click "Start Building" to begin
-2. **Fill the form** with your project details
-3. **Preview live** - See your page update in real-time  
-4. **Publish anonymously** - Get a shareable link instantly
-
-### 🔐 **With User Account (Recommended)**
-
-1. **Sign in** with GitHub on the homepage
-2. **Create projects** that are saved to your dashboard
-3. **Manage projects** - View, edit, delete from `/dashboard`
-4. **Edit anytime** - Update your projects and keep the same URL
-
-### 📊 **Dashboard Features**
-
-- **View all projects** - See your complete project portfolio
-- **Quick actions** - View live, edit, or delete projects
-- **Project stats** - See feature count and creation dates
-- **Direct editing** - Click "Edit" to modify any project
-
-### 🔗 **Sharing & Export**
-
-- Each project gets a unique URL: `yourdomain.com/project-name-xyz`
-- **Shareable links** work across all devices and browsers
-- **Download as HTML** - Export static files for self-hosting
-- **Social sharing** - Built-in copy link and native share options
-
-## API Endpoints
-
-### POST `/api/publish` (Anonymous)
-
-Publishes a project anonymously to Redis only.
-
-**Request Body:**
-```json
-{
-  "projectName": "My Awesome Project",
-  "tagline": "A brief description of the project",
-  "features": [
-    {
-      "title": "Feature Name", 
-      "description": "Feature description",
-      "icon": "Star"
-    }
-  ],
-  "ctaText": "Get Started",
-  "ctaUrl": "https://example.com",
-  "screenshot": "https://example.com/image.png"
-}
-```
-
-### POST `/api/projects` (Authenticated)
-
-Saves a project to user's account in Supabase + Redis.
-
-**Request Body:**
-```json
-{
-  "projectData": {
-    // Same structure as above
-  },
-  "editId": "optional-project-id-for-editing"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "slug": "my-awesome-project-xyz", 
-  "projectId": "uuid",
-  "url": "https://yourdomain.com/my-awesome-project-xyz",
-  "isEdit": false
-}
-```
-
-### GET `/api/projects?id=<project-id>` (Authenticated)
-
-Fetches a specific project for editing.
-
-## Project Structure
-
-```
-src/
-├── app/
-│   ├── api/publish/          # API endpoint for publishing projects
-│   ├── builder/              # Form-based page builder
-│   ├── [slug]/              # Dynamic project pages
-│   ├── layout.tsx           # Root layout
-│   ├── page.tsx             # Landing page
-│   └── not-found.tsx        # 404 page
-├── components/
-│   ├── ui/                  # ShadCN UI components
-│   ├── project-preview.tsx  # Live preview component
-│   └── project-page-client.tsx  # Client-side project page
-├── lib/
-│   ├── types.ts            # TypeScript interfaces
-│   └── storage.ts          # API functions and utilities
-```
-
-## Environment Variables
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | Yes |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key | Yes |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key | Yes |
-| `REDIS_URL` | Redis connection URL | No* |
-| `NEXT_PUBLIC_BASE_URL` | Base URL for shareable links | No |
-
-*Redis is optional but recommended for fast public page loading
-
-## Deployment
-
-### Deploy to Vercel
-
-1. Push your code to GitHub
-2. Connect your repository to Vercel
-3. Set up environment variables in Vercel dashboard
-4. Deploy!
-
-The app is optimized for Vercel deployment with:
-- Server-side rendering for project pages
-- API routes for publishing
-- Static asset optimization
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/new-feature`
-3. Commit your changes: `git commit -am 'Add new feature'`
-4. Push to the branch: `git push origin feature/new-feature`
-5. Submit a pull request
-
-## License
-
-This project is open source and available under the [MIT License](LICENSE).
-
-## Support
-
-- Create an issue for bug reports or feature requests
-- Check existing issues before creating new ones
-- Provide detailed information for faster resolution
+Visit [onepagelaunch.com](https://onepagelaunch.com) and click "Start Building" to create your first project page.
 
 ---
 
-Built with ❤️ using Next.js and Vercel KV
+Built with ❤️ for the developer community
