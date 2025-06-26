@@ -22,7 +22,7 @@ export default function Home() {
             Sign in to save and manage your projects.
           </p>
           <div className="flex gap-4 justify-center">
-            <Link href="/builder">
+            <Link href="/create">
               <Button size="lg" className="cursor-pointer">
                 <Rocket className="h-4 w-4 mr-2" />
                 Start Building
@@ -126,7 +126,7 @@ export default function Home() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Link href="/builder">
+              <Link href="/create">
                 <Button size="lg" variant="secondary" className="text-lg px-8 py-3">
                   Create Your One-Pager Now
                 </Button>

@@ -8,6 +8,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { projectData, editId } = body as { projectData: BlockProjectData; editId?: string };
     const { slug, projectName, ...restOfData } = projectData;
+    let projectId: string | undefined;
 
     // --- Validate input ---
     if (!projectName || !slug) {
@@ -27,6 +28,7 @@ export async function POST(request: NextRequest) {
 
     if (editId) {
       // --- UPDATE EXISTING PROJECT ---
+      projectId = editId;
       const { data: existingProject } = await supabase
         .from('projects')
         .select('slug')
@@ -89,7 +91,7 @@ export async function POST(request: NextRequest) {
       }
 
       // 3. Insert new project
-      const projectId = uuidv4();
+      projectId = uuidv4();
       const supabaseData = {
         id: projectId,
         user_id: user.id,
@@ -111,6 +113,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       slug: slug,
+      projectId: projectId,
       url: `${process.env.NEXT_PUBLIC_BASE_URL}/${slug}`,
       isEdit: !!editId
     });

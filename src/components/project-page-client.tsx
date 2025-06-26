@@ -1,133 +1,147 @@
 'use client';
 
-import { BlockProjectData } from '@/lib/types';
-//import { Button } from '@/components/ui/button';
-//import { Download, Share2, ArrowLeft } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { BlockProjectData, Block } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
 import Link from 'next/link';
-//import { toast } from 'sonner';
 import ProjectBlockPreview from '@/components/block-editor/ProjectBlockPreview';
+import BlockEditor from '@/components/block-editor/BlockEditor';
+import { toast } from 'sonner';
 
 interface ProjectPageClientProps {
   project: BlockProjectData;
+  isOwner: boolean;
+  projectId: string;
 }
 
-export function ProjectPageClient({ project }: ProjectPageClientProps) {
-  // const handleDownload = () => {
-  //   const html = generateStaticHTML(project);
-  //   const blob = new Blob([html], { type: 'text/html' });
-  //   const url = URL.createObjectURL(blob);
-  //   const a = document.createElement('a');
-  //   a.href = url;
-  //   a.download = `${project.slug || 'project'}.html`;
-  //   document.body.appendChild(a);
-  //   a.click();
-  //   document.body.removeChild(a);
-  //   URL.revokeObjectURL(url);
-  // };
+export function ProjectPageClient({ project, isOwner, projectId }: ProjectPageClientProps) {
+  // Ensure the project has all required fields including slug
+  const initialProject = {
+    ...project,
+    slug: project.slug || ''
+  };
+  
+  const [editedProject, setEditedProject] = useState<BlockProjectData>(initialProject);
+  const [lastSavedProject, setLastSavedProject] = useState<BlockProjectData>(initialProject);
 
-  // const handleShare = () => {
-  //   if (navigator.share) {
-  //     navigator.share({
-  //       title: project.projectName,
-  //       text: 'Check out this project!',
-  //       url: window.location.href,
-  //     });
-  //   } else {
-  //     navigator.clipboard.writeText(window.location.href);
-  //     toast.success('URL copied to clipboard!');
-  //   }
-  // };
+  // Debounced save function
+  const debouncedSave = useCallback(
+    (() => {
+      let timeoutId: NodeJS.Timeout;
+      return (projectData: BlockProjectData) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(async () => {
+          // Only save if the project has actually changed and has required fields
+          if (JSON.stringify(projectData) !== JSON.stringify(lastSavedProject) && 
+              projectData.projectName && 
+              projectData.slug) {
+            try {
+              const response = await fetch('/api/projects', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  projectData,
+                  editId: projectId
+                }),
+              });
+              
+              const result = await response.json();
+              
+              if (result.success) {
+                setLastSavedProject(projectData);
+              } else {
+                toast.error(result.error || 'Failed to save changes');
+              }
+            } catch (error) {
+              console.error('Error saving project:', error);
+              toast.error('Failed to save changes');
+            }
+          }
+        }, 2000); // 2 second debounce
+      };
+    })(),
+    [projectId, lastSavedProject]
+  );
+
+  // Auto-save when project changes
+  useEffect(() => {
+    if (isOwner && editedProject !== lastSavedProject) {
+      debouncedSave(editedProject);
+    }
+  }, [editedProject, debouncedSave, isOwner, lastSavedProject]);
+
+  const addNewBlock = () => {
+    const newBlock: Block = {
+      id: `block-${Date.now()}`,
+      type: 'block',
+      title: 'New Block',
+      content: 'Add your content here...',
+      style: {
+        bgColor: '#ffffff',
+        padding: '2rem',
+        textAlign: 'left'
+      }
+    };
+
+    setEditedProject(prev => ({
+      ...prev,
+      blocks: [...prev.blocks, newBlock]
+    }));
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
       <div className="pt-20 pb-16">
-        <ProjectBlockPreview data={project} />
+        {isOwner ? (
+          <div className="bg-white min-h-screen">
+            {/* Editable Project Title */}
+            <div className="border-b border-gray-200 px-8 py-6">
+              <input
+                type="text"
+                value={editedProject.projectName}
+                onChange={(e) => setEditedProject(prev => ({ ...prev, projectName: e.target.value }))}
+                className="text-3xl font-bold text-center w-full bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
+                placeholder="Enter project name..."
+              />
+            </div>
+            
+            <BlockEditor 
+              data={editedProject} 
+              onUpdate={setEditedProject}
+            />
+          </div>
+        ) : (
+          <ProjectBlockPreview data={editedProject} />
+        )}
         
-        {/* Footer */}
-        <div className="text-center mt-16 pt-12 border-t border-white/20">
-          <p className="text-gray-500">
-            Built with{' '}
-            <Link href="/" className="text-blue-600 hover:text-blue-700 font-medium">
-              OnePageLaunch
-            </Link>
-          </p>
-        </div>
+        {/* Footer - Only show for visitors */}
+        {!isOwner && (
+          <div className="text-center mt-16 pt-12 border-t border-white/20">
+            <p className="text-gray-500">
+              Built with{' '}
+              <Link href="/" className="text-blue-600 hover:text-blue-700 font-medium">
+                OnePageLaunch
+              </Link>
+            </p>
+          </div>
+        )}
       </div>
+
+      {/* Floating Action Button - Only show for owners */}
+      {isOwner && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <Button
+            onClick={addNewBlock}
+            className="h-12 w-12 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 cursor-pointer"
+            title="Add New Block"
+          >
+            <Plus className="h-5 w-5" />
+          </Button>
+        </div>
+      )}
     </div>
   );
-}
-
-// function generateStaticHTML(project: BlockProjectData): string {
-//   // Generate HTML for block-based project
-//   const blocksHTML = project.blocks.map(block => {
-//     const style = block.style ? `style="${Object.entries(block.style).map(([key, value]) => {
-//       const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
-//       if (key === 'bgColor') return `background-color: ${value}`;
-//       if (key === 'borderColor') return `border: 2px solid ${value}`;
-//       return `${cssKey}: ${value}`;
-//     }).join('; ')}"` : '';
-    
-//     const childrenHTML = block.children?.map(child => {
-//       const childStyle = child.style ? `style="${Object.entries(child.style).map(([key, value]) => {
-//         const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
-//         if (key === 'bgColor') return `background-color: ${value}`;
-//         if (key === 'borderColor') return `border: 2px solid ${value}`;
-//         return `${cssKey}: ${value}`;
-//       }).join('; ')}"` : '';
-      
-//       return `
-//         <div class="block ${child.type}" ${childStyle}>
-//           ${child.title ? `<h3>${child.title}</h3>` : ''}
-//           ${child.content ? `<div>${child.content}</div>` : ''}
-//         </div>
-//       `;
-//     }).join('') || '';
-    
-//     return `
-//       <div class="block ${block.type}" ${style}>
-//         ${block.title ? `<h2>${block.title}</h2>` : ''}
-//         ${block.content ? `<div>${block.content}</div>` : ''}
-//         ${childrenHTML ? `<div class="children ${block.style?.layout || 'column'}">${childrenHTML}</div>` : ''}
-//       </div>
-//     `;
-//   }).join('');
-
-//   return `<!DOCTYPE html>
-// <html lang="en">
-// <head>
-//   <meta charset="UTF-8">
-//   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-//   <title>${project.projectName}</title>
-//   <style>
-//     * { margin: 0; padding: 0; box-sizing: border-box; }
-//     body { 
-//       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-//       background: linear-gradient(135deg, #f3e8ff 0%, #e0f2fe 100%);
-//       min-height: 100vh;
-//       padding: 2rem;
-//     }
-//     .container { max-width: 1200px; margin: 0 auto; }
-//     .header { text-align: center; margin-bottom: 4rem; }
-//     .header h1 { font-size: 3.5rem; color: #1f2937; margin-bottom: 1rem; }
-//     .block { margin: 1rem 0; }
-//     .block.block { display: block; }
-//     .block.inline { display: inline-block; margin: 0.25rem; width: auto; }
-//     .children { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-//     .children.row { flex-direction: row; }
-//     .children.column { flex-direction: column; }
-//     .children .block.block { width: 100%; }
-//     .children .block.inline { width: auto; }
-//   </style>
-// </head>
-// <body>
-//   <div class="container">
-//     <div class="header">
-//       <h1>${project.projectName}</h1>
-//     </div>
-//     <div class="blocks">
-//       ${blocksHTML}
-//     </div>
-//   </div>
-// </body>
-// </html>`;
-// } 
+} 
