@@ -27,6 +27,8 @@ interface BlockPreviewProps {
   onSelect?: () => void;
   onDrop?: (draggedId: string, targetId: string, position: 'before' | 'after' | 'inside') => void;
   depth?: number;
+  hoveredBlockId?: string | null;
+  setHoveredBlockId?: (id: string | null) => void;
 }
 
 export default function BlockPreview({ 
@@ -38,9 +40,10 @@ export default function BlockPreview({
   isSelected = false,
   onSelect,
   onDrop,
-  depth = 0
+  depth = 0,
+  hoveredBlockId,
+  setHoveredBlockId
 }: BlockPreviewProps) {
-  const [showBubbleMenu, setShowBubbleMenu] = React.useState(false);
   const [isDragging, setIsDragging] = React.useState(false);
   const [isDragOver, setIsDragOver] = React.useState(false);
   const [dropPosition, setDropPosition] = React.useState<'before' | 'after' | 'inside' | null>(null);
@@ -190,7 +193,7 @@ export default function BlockPreview({
     if (isEditable) {
       styles.position = 'relative';
       styles.minHeight = '2rem';
-      styles.cursor = isSelected ? 'default' : 'pointer';
+      styles.cursor = isSelected ? 'default' : 'grab';
     }
 
     return styles;
@@ -283,8 +286,8 @@ export default function BlockPreview({
       onDragOver={isEditable ? handleDragOver : undefined}
       onDragLeave={isEditable ? handleDragLeave : undefined}
       onClick={isEditable ? onSelect : undefined}
-      onMouseEnter={isEditable ? () => setShowBubbleMenu(true) : undefined}
-      onMouseLeave={isEditable ? () => setShowBubbleMenu(false) : undefined}
+      onMouseEnter={isEditable && setHoveredBlockId ? () => setHoveredBlockId(block.id) : undefined}
+      onMouseLeave={isEditable && setHoveredBlockId ? () => setHoveredBlockId(null) : undefined}
     >
       {/* Drag and drop indicators - only show when editing */}
       {isEditable && isDragOver && (
@@ -306,9 +309,9 @@ export default function BlockPreview({
         />
       )}
 
-      {/* Bubble Menu - only show when editing */}
-      {isEditable && showBubbleMenu && (
-        <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 z-10 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg p-2">
+      {/* Bubble Menu - only show when editing and hovered */}
+      {isEditable && hoveredBlockId === block.id && (
+        <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 z-10 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg p-2">
           <div className="flex items-center gap-1">
             {/* Block/Inline Toggle */}
             <Button
@@ -519,6 +522,8 @@ export default function BlockPreview({
                 onSelect={onSelect}
                 onDrop={onDrop}
                 depth={depth + 1}
+                hoveredBlockId={hoveredBlockId}
+                setHoveredBlockId={setHoveredBlockId}
               />
             ))}
           </div>

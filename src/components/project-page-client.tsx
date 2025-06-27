@@ -23,6 +23,7 @@ export function ProjectPageClient({ project, isOwner, projectId }: ProjectPageCl
   
   const [editedProject, setEditedProject] = useState<BlockProjectData>(initialProject);
   const [lastSavedProject, setLastSavedProject] = useState<BlockProjectData>(initialProject);
+  const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null);
 
   // Generate unique IDs
   const generateUniqueId = () => {
@@ -340,6 +341,8 @@ export function ProjectPageClient({ project, isOwner, projectId }: ProjectPageCl
                   onDelete={isOwner ? () => handleBlockDelete(block.id) : undefined}
                   onDuplicate={isOwner ? () => handleBlockDuplicate(block.id) : undefined}
                   onDrop={isOwner ? handleBlockDrop : undefined}
+                  hoveredBlockId={hoveredBlockId}
+                  setHoveredBlockId={setHoveredBlockId}
                 />
               ))}
             </div>
