@@ -67,14 +67,14 @@ export default function Home() {
         <main className="relative z-20 max-w-7xl mx-auto px-6 py-20">
           {/* Hero Section */}
           <section className="text-center mb-20">
-            <div className="inline-block bg-black text-white px-4 py-2 rounded-full text-sm mb-4 shadow">
+            <div className="inline-block bg-black text-white px-4 py-2 rounded-xl text-sm mb-4 shadow">
               🧱 OnePageLaunch
             </div>
             <h1 className="text-5xl md:text-6xl font-extrabold leading-tight mb-6">
               Launch your site brick by brick
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Create your own block-style website in minutes. Drag, drop, and customize each block your way.
+              Create your product page in minutes with blocks. Drag, drop, and customize each block your way.
             </p>
           </section>
 
@@ -94,7 +94,7 @@ export default function Home() {
           {/* CTA */}
           <section className="text-center mt-24">
             <Link href="/create">
-              <span className="inline-block px-8 py-4 bg-black text-white rounded-full shadow-lg hover:scale-105 transition-transform text-lg cursor-pointer">
+              <span className="inline-block px-8 py-4 bg-black text-white rounded-xl shadow-lg hover:scale-105 transition-transform text-lg cursor-pointer">
                 🚀 Start Building Now
               </span>
             </Link>
@@ -148,14 +148,14 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
-          <div className="inline-block bg-black text-white px-4 py-2 rounded-full text-sm mb-4 shadow">
+          <div className="inline-block bg-black text-white px-4 py-2 rounded-xl text-sm mb-4 shadow">
             🧱 OnePageLaunch
           </div>
           <h1 className="text-5xl md:text-6xl font-extrabold leading-tight mb-6">
             Launch your site brick by brick
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Create your own block-style website in minutes. Drag, drop, and customize each block your way.
+          Create your product page in minutes with blocks. Drag, drop, and customize each block your way.
           </p>
         </motion.section>
 
@@ -194,7 +194,7 @@ export default function Home() {
           viewport={{ once: true, amount: 0.2 }}
         >
           <Link href="/create">
-            <span className="inline-block px-8 py-4 bg-black text-white rounded-full shadow-lg hover:scale-105 transition-transform text-lg cursor-pointer">
+            <span className="inline-block px-8 py-4 bg-black text-white rounded-xl shadow-lg hover:scale-105 transition-transform text-lg cursor-pointer">
               🚀 Start Building Now
             </span>
           </Link>
