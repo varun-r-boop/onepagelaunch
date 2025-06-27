@@ -29,7 +29,7 @@ export async function GET(request: Request) {
         const mostRecentProject = projects[0]
         // Check if it's a block-based project
         if (mostRecentProject.data && mostRecentProject.data.blocks && Array.isArray(mostRecentProject.data.blocks)) {
-          next = `/builder?edit=${mostRecentProject.id}`
+          next = `/${mostRecentProject.id}`
         }
       }
 

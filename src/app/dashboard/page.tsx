@@ -191,7 +191,7 @@ export default function Dashboard() {
                             View
                           </Button>
                         </Link>
-                        <Link href={`/builder?edit=${project.id}`}>
+                        <Link href={`/${project.id}`}>
                           <Button variant="outline" size="sm" className="cursor-pointer">
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
