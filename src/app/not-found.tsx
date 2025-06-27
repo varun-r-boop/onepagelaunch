@@ -25,7 +25,7 @@ export default function NotFound() {
                   Go Home
                 </Button>
               </Link>
-              <Link href="/builder">
+              <Link href="/create">
                 <Button size="lg" className="w-full sm:w-auto">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Create Your Own

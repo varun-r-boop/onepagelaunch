@@ -144,7 +144,7 @@ export default function BuilderClient() {
       await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
-          redirectTo: `${window.location.protocol}//${window.location.host}/auth/callback?next=/builder`,
+          redirectTo: `${window.location.protocol}//${window.location.host}/auth/callback?next=/create`,
         },
       });
     } catch (error) {
