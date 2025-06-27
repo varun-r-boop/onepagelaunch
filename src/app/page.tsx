@@ -2,11 +2,6 @@
 
 import { motion } from 'framer-motion';
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Zap, Palette, Smartphone, Download, Rocket } from "lucide-react";
-import { AuthButton } from "@/components/auth/auth-button";
 
 const floatingBricks = [
   { style: 'top-[10%] left-[5%]', delay: 0 },
