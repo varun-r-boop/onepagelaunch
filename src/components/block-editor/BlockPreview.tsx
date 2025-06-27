@@ -177,7 +177,7 @@ export default function BlockPreview({
       padding: block.style?.padding || '1rem',
       backgroundColor: block.style?.bgColor || 'transparent',
       border: block.style?.borderColor ? `2px solid ${block.style.borderColor}` : 'none',
-      borderRadius: block.style?.borderRadius || '0.5rem',
+      borderRadius: block.style?.borderRadius || '1rem',
       margin: block.style?.margin || '0.5rem 0',
       textAlign: block.style?.textAlign || 'left',
       width: block.style?.width || '100%',
