@@ -20,7 +20,7 @@ export default function BuilderClient() {
   const supabase = createClient();
 
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   const [slug, setSlug] = useState('');
   const [isSlugAvailable, setIsSlugAvailable] = useState<boolean | null>(null);
@@ -28,50 +28,9 @@ export default function BuilderClient() {
 
   // Block-based data
   const [blockData, setBlockData] = useState<BlockProjectData>({
-    projectName: 'My Awesome Project',
-    blocks: [
-      {
-        id: 'hero-block',
-        type: 'block',
-        title: '🚀 Welcome to My Project',
-        content: 'This is a powerful tool that helps you build amazing things.',
-        style: {
-          bgColor: '#f8fafc',
-          padding: '2rem',
-          textAlign: 'center'
-        }
-      },
-      {
-        id: 'features-block',
-        type: 'block',
-        title: '💡 Key Features',
-        style: {
-          bgColor: '#ffffff',
-          padding: '2rem',
-          borderColor: '#e2e8f0'
-        },
-        children: [
-          {
-            id: 'feature-1',
-            type: 'inline',
-            title: '⚡ Fast Performance',
-            content: 'Lightning-fast loading times'
-          },
-          {
-            id: 'feature-2',
-            type: 'inline',
-            title: '🧱 Modular Design',
-            content: 'Build with reusable components'
-          },
-          {
-            id: 'feature-3',
-            type: 'inline',
-            title: '🎨 Beautiful UI',
-            content: 'Modern and responsive design'
-          }
-        ]
-      }
-    ]
+    projectName: '',
+    slug: '',
+    blocks: []
   });
 
   // Load user and project data
@@ -228,6 +187,11 @@ export default function BuilderClient() {
     };
   }, [slug, editId]);
 
+  // Generate unique IDs
+  const generateUniqueId = () => {
+    return `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header Bar */}
@@ -299,7 +263,7 @@ export default function BuilderClient() {
         <Button
           onClick={() => {
             const newBlock = {
-              id: `block-${Date.now()}`,
+              id: generateUniqueId(),
               type: 'block' as const,
               title: 'New Block',
               content: 'Add your content here...',

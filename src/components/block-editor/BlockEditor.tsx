@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import BlockComponent from './Block';
+import BlockPreview from './BlockPreview';
 import { BlockProjectData, Block } from '@/lib/types';
 //import { Button } from '@/components/ui/button';
 //import { Plus, Trash2 } from 'lucide-react';
@@ -96,10 +96,15 @@ function findAndInsertBlock(
 export default function BlockEditor({ data, onUpdate }: BlockEditorProps) {
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
 
+  // Generate unique IDs
+  const generateUniqueId = () => {
+    return `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const addBlock = () => {
     const newBlock: Block = {
-      id: `block-${Date.now()}`,
+      id: generateUniqueId(),
       type: 'block',
       title: 'New Block',
       content: 'Add your content here...',
@@ -167,8 +172,11 @@ export default function BlockEditor({ data, onUpdate }: BlockEditorProps) {
         if (block.id === blockId) {
           return {
             ...block,
-            id: `block-${Date.now()}`,
-            children: block.children ? duplicateBlockRecursive(block.children) : []
+            id: generateUniqueId(),
+            children: block.children ? block.children.map(child => ({
+              ...child,
+              id: generateUniqueId()
+            })) : []
           };
         }
         if (block.children) {
@@ -230,7 +238,7 @@ export default function BlockEditor({ data, onUpdate }: BlockEditorProps) {
     if (!draggedId) return;
 
     // This prevents firing when dropping on a block which handles its own drop
-    if ((e.target as HTMLElement).closest('.block-component')) {
+    if ((e.target as HTMLElement).closest('.block-preview')) {
       return;
     }
 
@@ -252,9 +260,10 @@ export default function BlockEditor({ data, onUpdate }: BlockEditorProps) {
       {/* Blocks Container */}
       <div className="w-full px-8 py-6">
         {data.blocks.map((block) => (
-          <BlockComponent
+          <BlockPreview
             key={block.id}
             block={block}
+            isEditable={true}
             onUpdate={(updatedBlock) => updateBlock(block.id, updatedBlock)}
             onDelete={() => deleteBlock(block.id)}
             onDuplicate={() => duplicateBlock(block.id)}

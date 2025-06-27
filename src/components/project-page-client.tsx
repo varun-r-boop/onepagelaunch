@@ -5,8 +5,7 @@ import { BlockProjectData, Block } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
-import ProjectBlockPreview from '@/components/block-editor/ProjectBlockPreview';
-import BlockEditor from '@/components/block-editor/BlockEditor';
+import BlockPreview from '@/components/block-editor/BlockPreview';
 import { toast } from 'sonner';
 
 interface ProjectPageClientProps {
@@ -24,6 +23,11 @@ export function ProjectPageClient({ project, isOwner, projectId }: ProjectPageCl
   
   const [editedProject, setEditedProject] = useState<BlockProjectData>(initialProject);
   const [lastSavedProject, setLastSavedProject] = useState<BlockProjectData>(initialProject);
+
+  // Generate unique IDs
+  const generateUniqueId = () => {
+    return `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  };
 
   // Debounced save function
   const debouncedSave = useCallback(
@@ -75,7 +79,7 @@ export function ProjectPageClient({ project, isOwner, projectId }: ProjectPageCl
 
   const addNewBlock = () => {
     const newBlock: Block = {
-      id: `block-${Date.now()}`,
+      id: generateUniqueId(),
       type: 'block',
       title: 'New Block',
       content: 'Add your content here...',
@@ -92,42 +96,265 @@ export function ProjectPageClient({ project, isOwner, projectId }: ProjectPageCl
     }));
   };
 
+  // Helper function to find and remove a block by ID (recursive)
+  const findAndRemoveBlock = (blocks: Block[], blockId: string): { newBlocks: Block[]; foundBlock: Block | null } => {
+    let foundBlock: Block | null = null;
+
+    const remover = (bs: Block[]): Block[] => {
+      const filtered = bs.filter(b => {
+        if (b.id === blockId) {
+          foundBlock = b;
+          return false;
+        }
+        return true;
+      });
+
+      if (foundBlock) {
+        return filtered;
+      }
+
+      return bs.map(b => {
+        if (!b.children) return b;
+        const newChildren = remover(b.children);
+        if (b.children.length === newChildren.length) {
+          return b;
+        }
+        return { ...b, children: newChildren };
+      });
+    };
+
+    const newBlocks = remover(blocks);
+    return { newBlocks, foundBlock };
+  };
+
+  // Helper function to find and insert a block (recursive)
+  const findAndInsertBlock = (
+    blocks: Block[],
+    targetId: string,
+    blockToInsert: Block,
+    position: 'before' | 'after' | 'inside'
+  ): Block[] => {
+    if (position === 'inside') {
+      return blocks.map(b => {
+        if (b.id === targetId) {
+          return { ...b, children: [...(b.children || []), blockToInsert] };
+        }
+        if (b.children) {
+          return { ...b, children: findAndInsertBlock(b.children, targetId, blockToInsert, position) };
+        }
+        return b;
+      });
+    }
+
+    const newBlocks: Block[] = [];
+    let inserted = false;
+    for (const b of blocks) {
+      if (b.id === targetId) {
+        if (position === 'before') newBlocks.push(blockToInsert);
+        newBlocks.push(b);
+        if (position === 'after') newBlocks.push(blockToInsert);
+        inserted = true;
+      } else {
+        newBlocks.push(b);
+      }
+    }
+
+    if (inserted) {
+      return newBlocks;
+    }
+
+    return blocks.map(b => {
+      if (!b.children) return b;
+      return { ...b, children: findAndInsertBlock(b.children, targetId, blockToInsert, position) };
+    });
+  };
+
+  // Recursive block update function
+  const updateBlockRecursive = (blocks: Block[], blockId: string, updatedBlock: Block): Block[] => {
+    return blocks.map(block => {
+      if (block.id === blockId) {
+        return updatedBlock;
+      }
+      if (block.children) {
+        return {
+          ...block,
+          children: updateBlockRecursive(block.children, blockId, updatedBlock)
+        };
+      }
+      return block;
+    });
+  };
+
+  // Recursive block delete function
+  const deleteBlockRecursive = (blocks: Block[], blockId: string): Block[] => {
+    return blocks.filter(block => {
+      if (block.id === blockId) {
+        return false;
+      }
+      if (block.children) {
+        return {
+          ...block,
+          children: deleteBlockRecursive(block.children, blockId)
+        };
+      }
+      return true;
+    });
+  };
+
+  // Recursive block duplicate function
+  const duplicateBlockRecursive = (blocks: Block[], blockId: string): Block[] => {
+    return blocks.map(block => {
+      if (block.id === blockId) {
+        // Create a deep copy of the block with a new ID
+        const duplicatedBlock = {
+          ...block,
+          id: generateUniqueId(),
+          children: block.children ? block.children.map(child => ({
+            ...child,
+            id: generateUniqueId()
+          })) : []
+        };
+        return duplicatedBlock;
+      }
+      if (block.children) {
+        return {
+          ...block,
+          children: duplicateBlockRecursive(block.children, blockId)
+        };
+      }
+      return block;
+    });
+  };
+
+  const handleBlockUpdate = (blockId: string, updatedBlock: Block) => {
+    setEditedProject(prev => ({
+      ...prev,
+      blocks: updateBlockRecursive(prev.blocks, blockId, updatedBlock)
+    }));
+  };
+
+  const handleBlockDelete = (blockId: string) => {
+    setEditedProject(prev => ({
+      ...prev,
+      blocks: deleteBlockRecursive(prev.blocks, blockId)
+    }));
+  };
+
+  const handleBlockDuplicate = (blockId: string) => {
+    setEditedProject(prev => ({
+      ...prev,
+      blocks: duplicateBlockRecursive(prev.blocks, blockId)
+    }));
+  };
+
+  const handleBlockDrop = (draggedId: string, targetId: string, position: 'before' | 'after' | 'inside') => {
+    if (draggedId === targetId && position !== 'inside') return;
+
+    setEditedProject(prev => {
+      const { newBlocks: blocksWithoutDragged, foundBlock: draggedBlock } = findAndRemoveBlock(
+        prev.blocks,
+        draggedId
+      );
+
+      if (!draggedBlock) {
+        console.error("Couldn't find dragged block");
+        return prev;
+      }
+      
+      // Prevent dropping a block into itself or its own children
+      if (position === 'inside') {
+        if (draggedId === targetId) return prev;
+        let isDescendant = false;
+        const checkDescendants = (children: Block[]) => {
+          for (const child of children) {
+            if (child.id === targetId) isDescendant = true;
+            if (isDescendant) return;
+            if (child.children) checkDescendants(child.children);
+          }
+        };
+        if (draggedBlock.children) checkDescendants(draggedBlock.children);
+        if (isDescendant) {
+          toast.error("Cannot drop a block into one of its own children.");
+          return prev;
+        }
+      }
+
+      const newBlocks = findAndInsertBlock(blocksWithoutDragged, targetId, draggedBlock, position);
+      return { ...prev, blocks: newBlocks };
+    });
+  };
+
+  const handleRootDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const draggedId = e.dataTransfer.getData('text/plain');
+    if (!draggedId) return;
+
+    // This prevents firing when dropping on a block which handles its own drop
+    if ((e.target as HTMLElement).closest('.block-preview')) {
+      return;
+    }
+
+    setEditedProject(prev => {
+      const { newBlocks: blocksWithoutDragged, foundBlock: draggedBlock } = findAndRemoveBlock(prev.blocks, draggedId);
+      
+      if (!draggedBlock) return prev;
+
+      // Add to the end of the root blocks array
+      const newBlocks = [...blocksWithoutDragged, draggedBlock];
+      return { ...prev, blocks: newBlocks };
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
       <div className="pt-20 pb-16">
-        {isOwner ? (
-          <div className="bg-white min-h-screen">
-            {/* Editable Project Title */}
-            <div className="border-b border-gray-200 px-8 py-6">
+        <div className="project-block-preview">
+          <div className="container mx-auto px-4 py-8">
+            {/* Project Title - Editable for owners, static for visitors */}
+            {isOwner ? (
               <input
                 type="text"
                 value={editedProject.projectName}
                 onChange={(e) => setEditedProject(prev => ({ ...prev, projectName: e.target.value }))}
-                className="text-3xl font-bold text-center w-full bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
+                className="text-4xl font-bold text-center mb-8 w-full bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
                 placeholder="Enter project name..."
               />
-            </div>
+            ) : (
+              <h1 className="text-4xl font-bold text-center mb-8">{editedProject.projectName}</h1>
+            )}
             
-            <BlockEditor 
-              data={editedProject} 
-              onUpdate={setEditedProject}
-            />
+            {/* Blocks - Use unified BlockPreview component for both owners and visitors */}
+            <div 
+              className="blocks-container space-y-4"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={isOwner ? handleRootDrop : undefined}
+            >
+              {editedProject.blocks.map((block) => (
+                <BlockPreview
+                  key={block.id}
+                  block={block}
+                  isEditable={isOwner}
+                  onUpdate={isOwner ? (updatedBlock) => handleBlockUpdate(block.id, updatedBlock) : undefined}
+                  onDelete={isOwner ? () => handleBlockDelete(block.id) : undefined}
+                  onDuplicate={isOwner ? () => handleBlockDuplicate(block.id) : undefined}
+                  onDrop={isOwner ? handleBlockDrop : undefined}
+                />
+              ))}
+            </div>
           </div>
-        ) : (
-          <ProjectBlockPreview data={editedProject} />
-        )}
+        </div>
         
-        {/* Footer - Only show for visitors */}
-        {!isOwner && (
-          <div className="text-center mt-16 pt-12 border-t border-white/20">
-            <p className="text-gray-500">
-              Built with{' '}
-              <Link href="/" className="text-blue-600 hover:text-blue-700 font-medium">
-                OnePageLaunch
-              </Link>
-            </p>
-          </div>
-        )}
+        {/* Footer - Show for everyone */}
+        <div className="text-center mt-16 pt-12 border-t border-white/20">
+          <p className="text-gray-500">
+            Built with{' '}
+            <Link href="/" className="text-blue-600 hover:text-blue-700 font-medium">
+            🧱 OnePageLaunch
+            </Link>
+          </p>
+        </div>
       </div>
 
       {/* Floating Action Button - Only show for owners */}
