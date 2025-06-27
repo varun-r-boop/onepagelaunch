@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { BlockProjectData, Block } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -14,6 +14,30 @@ interface ProjectPageClientProps {
   projectId: string;
 }
 
+// Utility: Deep clone a block and all its children with new unique IDs
+function deepCloneBlockWithNewIds(block: Block): Block {
+  const generateUniqueId = () => `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return {
+    ...block,
+    id: generateUniqueId(),
+    children: block.children ? block.children.map(deepCloneBlockWithNewIds) : [],
+  };
+}
+
+// Utility: Insert duplicate below original
+function insertDuplicateBelow(blocks: Block[], blockId: string): Block[] {
+  return blocks.flatMap(block => {
+    if (block.id === blockId) {
+      const duplicate = deepCloneBlockWithNewIds(block);
+      return [block, duplicate];
+    }
+    if (block.children) {
+      return [{ ...block, children: insertDuplicateBelow(block.children, blockId) }];
+    }
+    return [block];
+  });
+}
+
 export function ProjectPageClient({ project, isOwner, projectId }: ProjectPageClientProps) {
   // Ensure the project has all required fields including slug
   const initialProject = {
@@ -24,6 +48,53 @@ export function ProjectPageClient({ project, isOwner, projectId }: ProjectPageCl
   const [editedProject, setEditedProject] = useState<BlockProjectData>(initialProject);
   const [lastSavedProject, setLastSavedProject] = useState<BlockProjectData>(initialProject);
   const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null);
+
+  // Undo/Redo stacks
+  const historyRef = useRef<BlockProjectData[]>([]);
+  const futureRef = useRef<BlockProjectData[]>([]);
+  const isUndoRedo = useRef(false);
+
+  // Push to history on every edit (except undo/redo)
+  useEffect(() => {
+    if (!isUndoRedo.current) {
+      historyRef.current = [...historyRef.current, editedProject];
+      futureRef.current = [];
+    }
+    isUndoRedo.current = false;
+  }, [editedProject]);
+
+  // Undo function
+  const undo = () => {
+    if (historyRef.current.length <= 1) return;
+    futureRef.current = [historyRef.current[historyRef.current.length - 1], ...futureRef.current];
+    isUndoRedo.current = true;
+    setEditedProject(historyRef.current[historyRef.current.length - 2]);
+    historyRef.current = historyRef.current.slice(0, -1);
+  };
+
+  // Redo function
+  const redo = () => {
+    if (futureRef.current.length === 0) return;
+    isUndoRedo.current = true;
+    setEditedProject(futureRef.current[0]);
+    historyRef.current = [...historyRef.current, futureRef.current[0]];
+    futureRef.current = futureRef.current.slice(1);
+  };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        undo();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo]);
 
   // Generate unique IDs
   const generateUniqueId = () => {
@@ -202,31 +273,6 @@ export function ProjectPageClient({ project, isOwner, projectId }: ProjectPageCl
     });
   };
 
-  // Recursive block duplicate function
-  const duplicateBlockRecursive = (blocks: Block[], blockId: string): Block[] => {
-    return blocks.map(block => {
-      if (block.id === blockId) {
-        // Create a deep copy of the block with a new ID
-        const duplicatedBlock = {
-          ...block,
-          id: generateUniqueId(),
-          children: block.children ? block.children.map(child => ({
-            ...child,
-            id: generateUniqueId()
-          })) : []
-        };
-        return duplicatedBlock;
-      }
-      if (block.children) {
-        return {
-          ...block,
-          children: duplicateBlockRecursive(block.children, blockId)
-        };
-      }
-      return block;
-    });
-  };
-
   const handleBlockUpdate = (blockId: string, updatedBlock: Block) => {
     setEditedProject(prev => ({
       ...prev,
@@ -244,7 +290,7 @@ export function ProjectPageClient({ project, isOwner, projectId }: ProjectPageCl
   const handleBlockDuplicate = (blockId: string) => {
     setEditedProject(prev => ({
       ...prev,
-      blocks: duplicateBlockRecursive(prev.blocks, blockId)
+      blocks: insertDuplicateBelow(prev.blocks, blockId)
     }));
   };
 
