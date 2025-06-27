@@ -232,7 +232,7 @@ export default function CreatePage() {
               Choose your site link
             </label>
             <div className="flex items-center border rounded-lg overflow-hidden">
-              <span className="px-3 text-gray-500 bg-gray-100">onepagelaunch.com/</span>
+              <span className="px-3 text-gray-500 bg-gray-100">onepagelaunch.vercel.app/</span>
               <input 
                 name="slug" 
                 id="slug-input" 
@@ -248,7 +248,7 @@ export default function CreatePage() {
             <p className="text-sm text-gray-500 text-left">
               Your site will be: 
               <span className="font-mono bg-gray-100 px-2 py-1 rounded ml-1">
-                onepagelaunch.com/{slug || 'yourname'}
+              onepagelaunch.vercel.app/{slug || 'yourname'}
               </span>
             </p>
 
