@@ -1,7 +1,8 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from "next/link";
+import { useState, useEffect } from 'react';
 
 const floatingBricks = [
   { style: 'top-[10%] left-[5%]', delay: 0 },
@@ -31,6 +32,66 @@ const features = [
 ];
 
 export default function Home() {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return (
+      <div className="relative min-h-screen bg-white text-gray-900 font-sans overflow-hidden">
+        {/* SVG Pattern Background */}
+        <div
+          className="fixed inset-0 z-0 pointer-events-none"
+          style={{
+            backgroundImage:
+              'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' fill=\'none\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Crect width=\'60\' height=\'60\' fill=\'white\'/%3E%3Crect x=\'1\' y=\'1\' width=\'18\' height=\'18\' stroke=\'%23e0e7ff\' stroke-width=\'2\'/%3E%3Crect x=\'21\' y=\'1\' width=\'18\' height=\'18\' stroke=\'%23e0e7ff\' stroke-width=\'2\'/%3E%3Crect x=\'41\' y=\'1\' width=\'18\' height=\'18\' stroke=\'%23e0e7ff\' stroke-width=\'2\'/%3E%3Crect x=\'1\' y=\'21\' width=\'18\' height=\'18\' stroke=\'%23e0e7ff\' stroke-width=\'2\'/%3E%3Crect x=\'21\' y=\'21\' width=\'18\' height=\'18\' stroke=\'%23e0e7ff\' stroke-width=\'2\'/%3E%3Crect x=\'41\' y=\'21\' width=\'18\' height=\'18\' stroke=\'%23e0e7ff\' stroke-width=\'2\'/%3E%3Crect x=\'1\' y=\'41\' width=\'18\' height=\'18\' stroke=\'%23e0e7ff\' stroke-width=\'2\'/%3E%3Crect x=\'21\' y=\'41\' width=\'18\' height=\'18\' stroke=\'%23e0e7ff\' stroke-width=\'2\'/%3E%3Crect x=\'41\' y=\'41\' width=\'18\' height=\'18\' stroke=\'%23e0e7ff\' stroke-width=\'2\'/%3E%3C/svg%3E")',
+            backgroundSize: '60px 60px',
+            opacity: 0.05,
+          }}
+        />
+
+        <main className="relative z-20 max-w-7xl mx-auto px-6 py-20">
+          {/* Hero Section */}
+          <section className="text-center mb-20">
+            <div className="inline-block bg-black text-white px-4 py-2 rounded-full text-sm mb-4 shadow">
+              🧱 OnePageLaunch
+            </div>
+            <h1 className="text-5xl md:text-6xl font-extrabold leading-tight mb-6">
+              Launch your site brick by brick
+            </h1>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Create your own block-style website in minutes. Drag, drop, and customize each block your way.
+            </p>
+          </section>
+
+          {/* Features Grid */}
+          <section className="grid md:grid-cols-3 gap-6">
+            {features.map((f) => (
+              <div
+                key={f.title}
+                className={`rounded-xl ${f.color} p-6 shadow hover:scale-105 transition-transform`}
+              >
+                <h2 className="text-lg font-bold mb-2">{f.emoji} {f.title}</h2>
+                <p className="text-sm text-gray-600">{f.desc}</p>
+              </div>
+            ))}
+          </section>
+
+          {/* CTA */}
+          <section className="text-center mt-24">
+            <Link href="/create">
+              <span className="inline-block px-8 py-4 bg-black text-white rounded-full shadow-lg hover:scale-105 transition-transform text-lg cursor-pointer">
+                🚀 Start Building Now
+              </span>
+            </Link>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen bg-white text-gray-900 font-sans overflow-hidden">
       {/* SVG Pattern Background */}
@@ -45,14 +106,17 @@ export default function Home() {
       />
 
       {/* Floating Bricks */}
-      {floatingBricks.map((b, i) => (
-        <motion.div
-          key={i}
-          className={`floating-brick absolute w-[30px] h-[30px] bg-indigo-100 rounded-lg opacity-20 z-10 ${b.style}`}
-          animate={{ y: [0, -20, 0] }}
-          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: b.delay }}
-        />
-      ))}
+      <AnimatePresence>
+        {floatingBricks.map((b, i) => (
+          <motion.div
+            key={i}
+            className={`floating-brick absolute w-[30px] h-[30px] bg-indigo-100 rounded-lg opacity-20 z-10 ${b.style}`}
+            initial={{ y: 0 }}
+            animate={{ y: [0, -20, 0] }}
+            transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: b.delay }}
+          />
+        ))}
+      </AnimatePresence>
 
       <main className="relative z-20 max-w-7xl mx-auto px-6 py-20">
         {/* Hero Section */}

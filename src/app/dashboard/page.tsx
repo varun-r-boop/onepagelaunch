@@ -119,7 +119,7 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Link href="/builder">
+              <Link href="/create">
                 <Button size="lg" className="cursor-pointer">
                   <Plus className="h-4 w-4 mr-2" />
                   Create New Project
@@ -151,7 +151,7 @@ export default function Dashboard() {
                 <CardDescription className="mb-4">
                   Create your first block-based website to get started!
                 </CardDescription>
-                <Link href="/builder">
+                <Link href="/create">
                   <Button>
                     <Plus className="h-4 w-4 mr-2" />
                     Create Your First Project
@@ -191,7 +191,7 @@ export default function Dashboard() {
                             View
                           </Button>
                         </Link>
-                        <Link href={`/${project.id}`}>
+                        <Link href={`/${project.slug}`}>
                           <Button variant="outline" size="sm" className="cursor-pointer">
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
