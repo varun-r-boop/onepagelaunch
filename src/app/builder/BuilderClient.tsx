@@ -20,7 +20,7 @@ export default function BuilderClient() {
   const supabase = createClient();
 
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   const [slug, setSlug] = useState('');
   const [isSlugAvailable, setIsSlugAvailable] = useState<boolean | null>(null);
@@ -28,50 +28,9 @@ export default function BuilderClient() {
 
   // Block-based data
   const [blockData, setBlockData] = useState<BlockProjectData>({
-    projectName: 'My Awesome Project',
-    blocks: [
-      {
-        id: 'hero-block',
-        type: 'block',
-        title: '🚀 Welcome to My Project',
-        content: 'This is a powerful tool that helps you build amazing things.',
-        style: {
-          bgColor: '#f8fafc',
-          padding: '2rem',
-          textAlign: 'center'
-        }
-      },
-      {
-        id: 'features-block',
-        type: 'block',
-        title: '💡 Key Features',
-        style: {
-          bgColor: '#ffffff',
-          padding: '2rem',
-          borderColor: '#e2e8f0'
-        },
-        children: [
-          {
-            id: 'feature-1',
-            type: 'inline',
-            title: '⚡ Fast Performance',
-            content: 'Lightning-fast loading times'
-          },
-          {
-            id: 'feature-2',
-            type: 'inline',
-            title: '🧱 Modular Design',
-            content: 'Build with reusable components'
-          },
-          {
-            id: 'feature-3',
-            type: 'inline',
-            title: '🎨 Beautiful UI',
-            content: 'Modern and responsive design'
-          }
-        ]
-      }
-    ]
+    projectName: '',
+    slug: '',
+    blocks: []
   });
 
   // Load user and project data
@@ -79,8 +38,8 @@ export default function BuilderClient() {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
-      // If editing, load project data
-      if (editId && user) {
+      // If editing an existing project (not 'new'), load project data
+      if (editId && editId !== 'new' && user) {
         await loadProject(editId);
       }
     };
@@ -139,7 +98,7 @@ export default function BuilderClient() {
       toast.error('Please enter a URL slug');
       return;
     }
-    if (!editId && !isSlugAvailable) {
+    if ((!editId || editId === 'new') && !isSlugAvailable) {
       toast.error('This URL slug is already taken');
       return;
     }
@@ -153,7 +112,7 @@ export default function BuilderClient() {
         },
         body: JSON.stringify({
           projectData: { ...blockData, slug },
-          editId: editId || undefined
+          editId: editId && editId !== 'new' ? editId : undefined
         }),
       });
       const result = await response.json();
@@ -185,7 +144,7 @@ export default function BuilderClient() {
       await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
-          redirectTo: `${window.location.origin}/builder`,
+          redirectTo: `${window.location.protocol}//${window.location.host}/auth/callback?next=/builder`,
         },
       });
     } catch (error) {
@@ -215,8 +174,8 @@ export default function BuilderClient() {
   // Debounce slug check
   useEffect(() => {
     const handler = setTimeout(() => {
-      // Skip slug checking if we are editing an existing project
-      if (editId) {
+      // Skip slug checking if we are editing an existing project (not 'new')
+      if (editId && editId !== 'new') {
         setIsSlugAvailable(true);
         return;
       }
@@ -227,6 +186,11 @@ export default function BuilderClient() {
       clearTimeout(handler);
     };
   }, [slug, editId]);
+
+  // Generate unique IDs
+  const generateUniqueId = () => {
+    return `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -249,12 +213,12 @@ export default function BuilderClient() {
               <Input
                 placeholder="url-slug"
                 value={slug}
-                disabled={!!editId}
+                disabled={!!(editId && editId !== 'new')}
                 onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                title={editId ? "URL cannot be changed for published projects" : "Enter a unique URL for your project"}
+                title={editId && editId !== 'new' ? "URL cannot be changed for published projects" : "Enter a unique URL for your project"}
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
-                {editId ? (
+                {editId && editId !== 'new' ? (
                   <span className="text-gray-500">Locked</span>
                 ) : isCheckingSlug ? (
                   <span className="text-gray-500">Checking...</span>
@@ -272,9 +236,9 @@ export default function BuilderClient() {
             <>
               <Button
                 onClick={handleSave}
-                disabled={isPublishing || loading || (!editId && !isSlugAvailable)}
+                disabled={isPublishing || loading || (!editId || editId === 'new') && !isSlugAvailable}
               >
-                {isPublishing ? (editId ? 'Updating...' : 'Publishing...') : (editId ? 'Update' : 'Publish')}
+                {isPublishing ? (editId && editId !== 'new' ? 'Updating...' : 'Publishing...') : (editId && editId !== 'new' ? 'Update' : 'Publish')}
               </Button>
             </>
           ) : (
@@ -299,7 +263,7 @@ export default function BuilderClient() {
         <Button
           onClick={() => {
             const newBlock = {
-              id: `block-${Date.now()}`,
+              id: generateUniqueId(),
               type: 'block' as const,
               title: 'New Block',
               content: 'Add your content here...',

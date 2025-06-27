@@ -1,68 +1,78 @@
 # OnePageLaunch
 
-A beautiful, no-login MVP for creating bento-style one-page websites for your side projects. Built with Next.js, Tailwind CSS, ShadCN UI, and Vercel KV for persistent storage.
+Create beautiful, bento-style landing pages for your side projects in minutes. No design skills required.
 
-## Features
+## What is OnePageLaunch?
 
-- 🔐 **User Authentication** - GitHub OAuth via Supabase
-- 📊 **User Dashboard** - Manage all your projects in one place  
-- 🚀 **Anonymous publishing** - Create projects without signing in
-- 🎨 **Bento-style design** - Modern grid layout for features
-- 📱 **Fully responsive** - Mobile-friendly design
-- 💾 **Dual storage** - Supabase for user projects + Redis for fast public access
-- 📤 **Export functionality** - Download as static HTML
-- 🔗 **Shareable links** - Works across devices and browsers
-- ⚡ **Live preview** - See changes in real-time
-- ✏️ **Edit projects** - Update your saved projects anytime
+OnePageLaunch is a simple tool that helps you create professional-looking landing pages for your side projects, MVPs, or any idea you want to showcase. Think of it as a "Linktree meets Notion" but specifically designed for developers and creators who want to quickly launch a project page.
 
-## Tech Stack
+## Key Features
 
-- **Framework**: Next.js 15 with App Router
-- **Styling**: Tailwind CSS
-- **Components**: ShadCN UI
-- **Authentication**: Supabase Auth (GitHub OAuth)
-- **Database**: Supabase (PostgreSQL) + Redis (for public pages)
-- **Icons**: Lucide React
-- **Language**: TypeScript
+### 🚀 **Instant Publishing**
+- Create and publish your project page in under 2 minutes
+- No account required - start building immediately
+- Get a shareable link instantly
 
-## Getting Started
+### 🎨 **Beautiful Bento-Style Design**
+- Modern grid layout that showcases your project features
+- Clean, professional design that works for any type of project
+- Fully responsive - looks great on all devices
 
-### Prerequisites
+### 📝 **Simple Project Setup**
+- Project name and tagline
+- Add up to 6 key features with icons
+- Include a screenshot or demo image
+- Add a call-to-action button
 
-- Node.js 18+ 
-- A Supabase account (for authentication and user projects)
-- A Vercel account (for Redis storage - optional for public pages)
+### 🔐 **Optional User Accounts**
+- Sign in with GitHub to save and manage your projects
+- Edit your projects anytime
+- Keep all your project pages in one dashboard
+- Maintain the same URL when you update content
 
-## Usage
+### 📱 **Perfect for Sharing**
+- Each project gets a unique, memorable URL
+- Works across all devices and browsers
+- Built-in social sharing features
+- Export as static HTML for self-hosting
 
-### 🚀 **Anonymous Publishing (No Login)**
+## Perfect For
 
-1. **Visit the homepage** - Click "Start Building" to begin
-2. **Fill the form** with your project details
-3. **Preview live** - See your page update in real-time  
-4. **Publish anonymously** - Get a shareable link instantly
+- **Side Projects** - Showcase your latest coding project
+- **MVPs** - Get early users and feedback
+- **Portfolio Pieces** - Display your work professionally
+- **Product Launches** - Create landing pages for new features
+- **Open Source Projects** - Present your contributions
+- **Hackathon Projects** - Share your weekend builds
 
-### 🔐 **With User Account (Recommended)**
+## How It Works
 
-1. **Sign in** with GitHub on the homepage
-2. **Create projects** that are saved to your dashboard
-3. **Manage projects** - View, edit, delete from `/dashboard`
-4. **Edit anytime** - Update your projects and keep the same URL
+1. **Start Building** - Click "Start Building" on the homepage
+2. **Fill the Form** - Add your project details and features
+3. **Preview Live** - See your page update in real-time as you type
+4. **Publish** - Get your shareable link instantly
+5. **Share** - Send your link to friends, social media, or anywhere
 
-### 📊 **Dashboard Features**
+## Example Use Cases
 
-- **View all projects** - See your complete project portfolio
-- **Quick actions** - View live, edit, or delete projects
-- **Project stats** - See feature count and creation dates
-- **Direct editing** - Click "Edit" to modify any project
+- **Developer Portfolio** - Showcase your latest React app with key features
+- **SaaS Landing Page** - Present your new tool with benefits and pricing
+- **Open Source Project** - Explain what your library does and how to contribute
+- **Side Hustle** - Market your freelance services or digital products
+- **Event Page** - Create a simple page for meetups or workshops
 
-### 🔗 **Sharing & Export**
+## Why OnePageLaunch?
 
-- Each project gets a unique URL: `yourdomain.com/project-name-xyz`
-- **Shareable links** work across all devices and browsers
-- **Download as HTML** - Export static files for self-hosting
-- **Social sharing** - Built-in copy link and native share options
+- **No Design Skills Needed** - Professional templates that look great out of the box
+- **Lightning Fast** - From idea to published page in minutes
+- **No Maintenance** - No servers, domains, or hosting to manage
+- **Always Accessible** - Your pages work everywhere, all the time
+- **Developer Friendly** - Built by developers, for developers
+
+## Get Started
+
+Visit [onepagelaunch.com](https://onepagelaunch.com) and click "Start Building" to create your first project page.
 
 ---
 
-Built with ❤️ using Next.js and Vercel KV
+Built with ❤️ for the developer community

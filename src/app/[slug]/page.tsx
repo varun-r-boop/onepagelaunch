@@ -29,7 +29,13 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     notFound(); // Old form-based projects are not supported
   }
 
+  // Check if current user is the owner
+  const { data: { user } } = await supabase.auth.getUser();
+  const isOwner = user?.id === project.user_id;
+
   const blockProject = project.data as BlockProjectData;
+  // Add the slug to the project data for auto-save validation
+  blockProject.slug = project.slug;
   
-  return <ProjectPageClient project={blockProject} />;
+  return <ProjectPageClient project={blockProject} isOwner={isOwner} projectId={project.id} />;
 } 
