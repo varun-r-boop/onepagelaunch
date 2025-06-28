@@ -191,15 +191,6 @@ export default function BlockPreview({
       styles.display = 'inline-block';
       styles.width = 'auto';
       styles.margin = '0.25rem';
-      
-      // Apply block alignment for inline blocks
-      if (block.style?.textAlign === 'center') {
-        styles.margin = '0.25rem auto';
-        styles.display = 'block';
-      } else if (block.style?.textAlign === 'right') {
-        styles.margin = '0.25rem 0 0.25rem auto';
-        styles.display = 'block';
-      }
     }
 
     return styles;
