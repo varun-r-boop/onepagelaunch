@@ -21,12 +21,17 @@ export default function CreatePage() {
   const [isSlugAvailable, setIsSlugAvailable] = useState<boolean | null>(null);
   const [isCheckingSlug, setIsCheckingSlug] = useState(false);
 
-  // Load user on mount
+  // Load user on mount with faster initial check
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      setLoading(false);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
+      } catch (error) {
+        console.error('Error getting user:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     getUser();
@@ -74,11 +79,11 @@ export default function CreatePage() {
     }
   };
 
-  // Debounce slug check
+  // Debounce slug check with shorter delay for better UX
   useEffect(() => {
     const handler = setTimeout(() => {
       checkSlugAvailability(slug);
-    }, 500);
+    }, 300); // Reduced from 500ms to 300ms
 
     return () => {
       clearTimeout(handler);
@@ -179,6 +184,7 @@ export default function CreatePage() {
     }
   };
 
+  // Show loading state only briefly
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
