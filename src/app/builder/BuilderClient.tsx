@@ -37,11 +37,18 @@ export default function BuilderClient() {
   // Load user and project data
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      // If editing an existing project (not 'new'), load project data
-      if (editId && editId !== 'new' && user) {
-        await loadProject(editId);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
+        // If editing an existing project (not 'new'), load project data
+        if (editId && editId !== 'new' && user) {
+          await loadProject(editId);
+        } else {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Error getting user:', error);
+        setLoading(false);
       }
     };
 
@@ -50,6 +57,9 @@ export default function BuilderClient() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setUser(session?.user ?? null);
+        if (!editId || editId === 'new') {
+          setLoading(false);
+        }
       }
     );
 
@@ -181,7 +191,7 @@ export default function BuilderClient() {
         return;
       }
       checkSlugAvailability(slug);
-    }, 500);
+    }, 300);
 
     return () => {
       clearTimeout(handler);

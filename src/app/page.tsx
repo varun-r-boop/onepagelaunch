@@ -50,59 +50,81 @@ const features = [
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [userProjects, setUserProjects] = useState<SupabaseProject[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isUserChecked, setIsUserChecked] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
+    // Show button immediately after a brief delay for better UX
+    const timer = setTimeout(() => {
+      setInitialLoadComplete(true);
+    }, 100);
+
     checkUserAndProjects();
+
+    // Preload the create page for faster navigation
+    const preloadCreatePage = () => {
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.href = '/create';
+      document.head.appendChild(link);
+    };
+    preloadCreatePage();
+
+    return () => clearTimeout(timer);
   }, []);
 
   const checkUserAndProjects = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+      setIsUserChecked(true);
       
       if (user) {
-        // Fetch user's projects
-        const { data: projects } = await supabase
-          .from('projects')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('updated_at', { ascending: false });
-        
-        if (projects && projects.length > 0) {
-          // Filter to only show block-based projects
-          const blockProjects = projects.filter(project => 
-            project.data.blocks && Array.isArray(project.data.blocks)
-          );
-          setUserProjects(blockProjects);
-        }
+        // Fetch user's projects in the background (don't block UI)
+        fetchUserProjects(user.id);
       }
     } catch (error) {
-      console.error('Error checking user and projects:', error);
+      console.error('Error checking user:', error);
+      setIsUserChecked(true);
     }
   };
 
-  const handleStartBuilding = async () => {
-    setIsLoading(true);
-    
+  const fetchUserProjects = async (userId: string) => {
     try {
-      if (user && userProjects.length > 0) {
-        // User is signed in and has projects - redirect to their most recent project
-        const mostRecentProject = userProjects[0];
-        router.push(`/${mostRecentProject.slug}`);
-      } else {
-        // User is not signed in or has no projects - go to create page
-        router.push('/create');
+      const { data: projects } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false });
+      
+      if (projects && projects.length > 0) {
+        // Filter to only show block-based projects
+        const blockProjects = projects.filter(project => 
+          project.data.blocks && Array.isArray(project.data.blocks)
+        );
+        setUserProjects(blockProjects);
       }
     } catch (error) {
-      console.error('Error handling start building:', error);
-      router.push('/create');
-    } finally {
-      setIsLoading(false);
+      console.error('Error fetching user projects:', error);
     }
   };
+
+  const handleStartBuilding = () => {
+    // Optimistic navigation - don't wait for loading state
+    if (user && userProjects.length > 0) {
+      // User is signed in and has projects - redirect to their most recent project
+      const mostRecentProject = userProjects[0];
+      router.push(`/${mostRecentProject.slug}`);
+    } else {
+      // User is not signed in or has no projects - go to create page
+      router.push('/create');
+    }
+  };
+
+  // Show loading state only if we haven't checked user yet AND initial load isn't complete
+  const showLoading = !isUserChecked && !initialLoadComplete;
 
   return (
     <div className="relative min-h-screen bg-white text-gray-900 font-sans overflow-hidden">
@@ -195,10 +217,10 @@ export default function Home() {
         >
           <button
             onClick={handleStartBuilding}
-            disabled={isLoading}
+            disabled={showLoading}
             className="inline-block px-8 py-4 bg-black text-white rounded-xl shadow-lg hover:scale-105 transition-transform text-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? 'Loading...' : '🚀 Start Building Now'}
+            {showLoading ? 'Loading...' : '🚀 Start Building Now'}
           </button>
         </motion.section>
       </main>
