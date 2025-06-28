@@ -15,6 +15,7 @@ import {
   Cuboid,
   BrickWall,
   Square as BorderIcon,
+  Link,
 } from 'lucide-react';
 
 interface BlockPreviewProps {
@@ -180,6 +181,9 @@ export default function BlockPreview({
       borderRadius: block.style?.borderRadius || '1rem',
       margin: block.style?.margin || '0.5rem 0',
       textAlign: block.style?.textAlign || 'left',
+      position: 'relative',
+      minHeight: '2rem',
+      cursor: isSelected ? 'default' : 'pointer',
       width: block.style?.width || '100%',
     };
 
@@ -187,13 +191,15 @@ export default function BlockPreview({
       styles.display = 'inline-block';
       styles.width = 'auto';
       styles.margin = '0.25rem';
-    }
-
-    // Add editing-specific styles
-    if (isEditable) {
-      styles.position = 'relative';
-      styles.minHeight = '2rem';
-      styles.cursor = isSelected ? 'default' : 'grab';
+      
+      // Apply block alignment for inline blocks
+      if (block.style?.textAlign === 'center') {
+        styles.margin = '0.25rem auto';
+        styles.display = 'block';
+      } else if (block.style?.textAlign === 'right') {
+        styles.margin = '0.25rem 0 0.25rem auto';
+        styles.display = 'block';
+      }
     }
 
     return styles;
@@ -416,6 +422,34 @@ export default function BlockPreview({
               )}
             </div>
 
+            {/* Edit Link - Only show for CTA blocks */}
+            {block.blockType === 'cta' && block.ctaButtons && block.ctaButtons.length > 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  const button = block.ctaButtons![0];
+                  const newUrl = prompt('Enter URL for this button:', button.url);
+                  if (newUrl !== null && onUpdate) {
+                    // Auto-add https:// if no protocol is specified and it's not a relative link
+                    let processedUrl = newUrl;
+                    if (newUrl && !newUrl.startsWith('http://') && !newUrl.startsWith('https://') && !newUrl.startsWith('#') && !newUrl.startsWith('/')) {
+                      processedUrl = `https://${newUrl}`;
+                    }
+                    
+                    const updatedButtons = block.ctaButtons?.map(b =>
+                      b.id === button.id ? { ...b, url: processedUrl } : b
+                    );
+                    onUpdate({ ...block, ctaButtons: updatedButtons });
+                  }
+                }}
+                title="Edit link"
+                className="h-7 w-7 p-0 rounded-md hover:bg-gray-100 transition-colors"
+              >
+                <Link className="h-3.5 w-3.5" />
+              </Button>
+            )}
+
             {/* Duplicate */}
             <Button
               size="sm"
@@ -529,8 +563,43 @@ export default function BlockPreview({
           </div>
         )}
 
+        {/* CTA Buttons */}
+        {block.ctaButtons && block.ctaButtons.length > 0 && (
+          <div className="cta-buttons mt-4 flex flex-wrap gap-3 justify-center">
+            {block.ctaButtons.map((button) => (
+              <div key={button.id} className="relative">
+                <a
+                  href={button.url}
+                  target={button.url.startsWith('http') ? '_blank' : '_self'}
+                  rel={button.url.startsWith('http') ? 'noopener noreferrer' : undefined}
+                  onClick={(e) => {
+                    // Prevent navigation when editing
+                    if (isEditable) {
+                      e.preventDefault();
+                    }
+                  }}
+                  className={`inline-flex items-center px-6 py-3 rounded-lg font-medium text-sm transition-all duration-200 hover:scale-105 ${
+                    button.variant === 'primary' 
+                      ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                      : button.variant === 'secondary'
+                      ? 'bg-gray-600 text-white hover:bg-gray-700'
+                      : 'bg-transparent border-2 border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                  style={{
+                    backgroundColor: button.style?.bgColor,
+                    color: button.style?.textColor,
+                    borderColor: button.style?.borderColor,
+                  }}
+                >
+                  {button.text}
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Empty state for blocks without content - only show when editing */}
-        {isEditable && !block.title && !block.content && (!block.children || block.children.length === 0) && (
+        {isEditable && !block.title && !block.content && (!block.children || block.children.length === 0) && (!block.ctaButtons || block.ctaButtons.length === 0) && (
           <div 
             className="text-gray-400 italic text-sm cursor-text hover:bg-gray-50/50 rounded px-1 -mx-1 transition-colors focus:outline-none"
             onClick={handleContentEdit}
