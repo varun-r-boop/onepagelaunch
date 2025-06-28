@@ -10,13 +10,27 @@ export interface BlockStyle {
   layout?: 'row' | 'column';
 }
 
+export interface CTAButton {
+  id: string;
+  text: string;
+  url: string;
+  variant?: 'primary' | 'secondary' | 'outline';
+  style?: {
+    bgColor?: string;
+    textColor?: string;
+    borderColor?: string;
+  };
+}
+
 export interface Block {
   id: string;
   type: 'block' | 'inline';
+  blockType?: 'text' | 'cta' | 'hero' | 'features' | 'testimonial' | 'contact';
   title?: string;
   content?: string;
   style?: BlockStyle;
   children?: Block[];
+  ctaButtons?: CTAButton[];
 }
 
 export interface BlockProjectData {

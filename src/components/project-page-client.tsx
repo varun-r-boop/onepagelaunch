@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { BlockProjectData, Block } from '@/lib/types';
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
 import Link from 'next/link';
-import BlockPreview from '@/components/block-editor/BlockPreview';
+import BlockPreview from './block-editor/BlockPreview';
 import { toast } from 'sonner';
+import FloatingActionBar from './block-editor/FloatingActionBar';
 
 interface ProjectPageClientProps {
   project: BlockProjectData;
@@ -96,11 +95,6 @@ export function ProjectPageClient({ project, isOwner, projectId }: ProjectPageCl
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [undo, redo]);
 
-  // Generate unique IDs
-  const generateUniqueId = () => {
-    return `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  };
-
   // Debounced save function
   const debouncedSave = useCallback(
     (() => {
@@ -148,25 +142,6 @@ export function ProjectPageClient({ project, isOwner, projectId }: ProjectPageCl
       debouncedSave(editedProject);
     }
   }, [editedProject, debouncedSave, isOwner, lastSavedProject]);
-
-  const addNewBlock = () => {
-    const newBlock: Block = {
-      id: generateUniqueId(),
-      type: 'block',
-      title: 'New Block',
-      content: 'Add your content here...',
-      style: {
-        bgColor: '#ffffff',
-        padding: '2rem',
-        textAlign: 'left'
-      }
-    };
-
-    setEditedProject(prev => ({
-      ...prev,
-      blocks: [...prev.blocks, newBlock]
-    }));
-  };
 
   // Helper function to find and remove a block by ID (recursive)
   const findAndRemoveBlock = (blocks: Block[], blockId: string): { newBlocks: Block[]; foundBlock: Block | null } => {
@@ -408,15 +383,14 @@ export function ProjectPageClient({ project, isOwner, projectId }: ProjectPageCl
 
       {/* Floating Action Button - Only show for owners */}
       {isOwner && (
-        <div className="fixed bottom-6 right-6 z-50">
-          <Button
-            onClick={addNewBlock}
-            className="h-12 w-12 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 cursor-pointer"
-            title="Add New Block"
-          >
-            <Plus className="h-5 w-5" />
-          </Button>
-        </div>
+        <FloatingActionBar
+          onAddBlock={(newBlock) => {
+            setEditedProject(prev => ({
+              ...prev,
+              blocks: [...prev.blocks, newBlock]
+            }));
+          }}
+        />
       )}
     </div>
   );

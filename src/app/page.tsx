@@ -1,8 +1,12 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import Link from "next/link";
+// import Link from "next/link"; // Remove unused import
 import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
+import type { User } from '@supabase/supabase-js';
+import { SupabaseProject } from '@/lib/types';
 
 const floatingBricks = [
   { style: 'top-[5%] left-[10%] w-[75px] h-[40px] bg-blue-200', delay: 0, duration: 4 },
@@ -44,65 +48,61 @@ const features = [
 ];
 
 export default function Home() {
-  const [isMounted, setIsMounted] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [userProjects, setUserProjects] = useState<SupabaseProject[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const supabase = createClient();
 
   useEffect(() => {
-    setIsMounted(true);
+    checkUserAndProjects();
   }, []);
 
-  if (!isMounted) {
-    return (
-      <div className="relative min-h-screen bg-white text-gray-900 font-sans overflow-hidden">
-        {/* SVG Pattern Background */}
-        <div
-          className="fixed inset-0 z-0 pointer-events-none"
-          style={{
-            backgroundImage:
-              'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' fill=\'none\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Crect width=\'60\' height=\'60\' fill=\'white\'/%3E%3Crect x=\'1\' y=\'1\' width=\'18\' height=\'18\' stroke=\'%23e0e7ff\' stroke-width=\'2\'/%3E%3Crect x=\'21\' y=\'1\' width=\'18\' height=\'18\' stroke=\'%23e0e7ff\' stroke-width=\'2\'/%3E%3Crect x=\'41\' y=\'1\' width=\'18\' height=\'18\' stroke=\'%23e0e7ff\' stroke-width=\'2\'/%3E%3Crect x=\'1\' y=\'21\' width=\'18\' height=\'18\' stroke=\'%23e0e7ff\' stroke-width=\'2\'/%3E%3Crect x=\'21\' y=\'21\' width=\'18\' height=\'18\' stroke=\'%23e0e7ff\' stroke-width=\'2\'/%3E%3Crect x=\'41\' y=\'21\' width=\'18\' height=\'18\' stroke=\'%23e0e7ff\' stroke-width=\'2\'/%3E%3Crect x=\'1\' y=\'41\' width=\'18\' height=\'18\' stroke=\'%23e0e7ff\' stroke-width=\'2\'/%3E%3Crect x=\'21\' y=\'41\' width=\'18\' height=\'18\' stroke=\'%23e0e7ff\' stroke-width=\'2\'/%3E%3Crect x=\'41\' y=\'41\' width=\'18\' height=\'18\' stroke=\'%23e0e7ff\' stroke-width=\'2\'/%3E%3C/svg%3E")',
-            backgroundSize: '60px 60px',
-            opacity: 0.05,
-          }}
-        />
+  const checkUserAndProjects = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      
+      if (user) {
+        // Fetch user's projects
+        const { data: projects } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('updated_at', { ascending: false });
+        
+        if (projects && projects.length > 0) {
+          // Filter to only show block-based projects
+          const blockProjects = projects.filter(project => 
+            project.data.blocks && Array.isArray(project.data.blocks)
+          );
+          setUserProjects(blockProjects);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking user and projects:', error);
+    }
+  };
 
-        <main className="relative z-20 max-w-7xl mx-auto px-6 py-20">
-          {/* Hero Section */}
-          <section className="text-center mb-20">
-            <div className="inline-block bg-black text-white px-4 py-2 rounded-xl text-sm mb-4 shadow">
-              🧱 OnePageLaunch
-            </div>
-            <h1 className="text-5xl md:text-6xl font-extrabold leading-tight mb-6">
-              Launch your site brick by brick
-            </h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Create your product page in minutes with blocks. Drag, drop, and customize each block your way.
-            </p>
-          </section>
-
-          {/* Features Grid */}
-          <section className="grid md:grid-cols-3 gap-6">
-            {features.map((f) => (
-              <div
-                key={f.title}
-                className={`rounded-xl ${f.color} p-6 shadow hover:scale-105 transition-transform`}
-              >
-                <h2 className="text-lg font-bold mb-2">{f.emoji} {f.title}</h2>
-                <p className="text-sm text-gray-600">{f.desc}</p>
-              </div>
-            ))}
-          </section>
-
-          {/* CTA */}
-          <section className="text-center mt-24">
-            <Link href="/create">
-              <span className="inline-block px-8 py-4 bg-black text-white rounded-xl shadow-lg hover:scale-105 transition-transform text-lg cursor-pointer">
-                🚀 Start Building Now
-              </span>
-            </Link>
-          </section>
-        </main>
-      </div>
-    );
-  }
+  const handleStartBuilding = async () => {
+    setIsLoading(true);
+    
+    try {
+      if (user && userProjects.length > 0) {
+        // User is signed in and has projects - redirect to their most recent project
+        const mostRecentProject = userProjects[0];
+        router.push(`/${mostRecentProject.slug}`);
+      } else {
+        // User is not signed in or has no projects - go to create page
+        router.push('/create');
+      }
+    } catch (error) {
+      console.error('Error handling start building:', error);
+      router.push('/create');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="relative min-h-screen bg-white text-gray-900 font-sans overflow-hidden">
@@ -193,11 +193,13 @@ export default function Home() {
           transition={{ duration: 0.7 }}
           viewport={{ once: true, amount: 0.2 }}
         >
-          <Link href="/create">
-            <span className="inline-block px-8 py-4 bg-black text-white rounded-xl shadow-lg hover:scale-105 transition-transform text-lg cursor-pointer">
-              🚀 Start Building Now
-            </span>
-          </Link>
+          <button
+            onClick={handleStartBuilding}
+            disabled={isLoading}
+            className="inline-block px-8 py-4 bg-black text-white rounded-xl shadow-lg hover:scale-105 transition-transform text-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? 'Loading...' : '🚀 Start Building Now'}
+          </button>
         </motion.section>
       </main>
     </div>

@@ -211,7 +211,7 @@ export default function CreatePage() {
             <button 
               onClick={handleSignIn}
               disabled={isSigningIn}
-              className="w-full bg-black text-white py-3 rounded-lg hover:opacity-90 transition flex justify-center items-center gap-2 disabled:opacity-50"
+              className="w-full bg-black text-white py-3 rounded-lg hover:opacity-90 transition flex justify-center items-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               <Github className="w-5 h-5" />
               {isSigningIn ? 'Signing in...' : 'Continue with GitHub'}

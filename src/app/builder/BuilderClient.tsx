@@ -5,13 +5,14 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { BlockProjectData } from '@/lib/types';
-import { ArrowLeft, User as UserIcon, Plus } from 'lucide-react';
+import { ArrowLeft, UserIcon } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import { toast } from 'sonner';
+import { BlockProjectData } from '@/lib/types';
 import BlockEditor from '@/components/block-editor/BlockEditor';
+import FloatingActionBar from '@/components/block-editor/FloatingActionBar';
 
 export default function BuilderClient() {
   const router = useRouter();
@@ -187,11 +188,6 @@ export default function BuilderClient() {
     };
   }, [slug, editId]);
 
-  // Generate unique IDs
-  const generateUniqueId = () => {
-    return `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header Bar */}
@@ -258,33 +254,15 @@ export default function BuilderClient() {
         />
       </div>
 
-      {/* Floating Toolbar */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <Button
-          onClick={() => {
-            const newBlock = {
-              id: generateUniqueId(),
-              type: 'block' as const,
-              title: 'New Block',
-              content: 'Add your content here...',
-              style: {
-                bgColor: '#ffffff',
-                padding: '2rem',
-                borderColor: '#e2e8f0',
-                textAlign: 'left' as const
-              }
-            };
-            setBlockData(prev => ({
-              ...prev,
-              blocks: [...prev.blocks, newBlock]
-            }));
-          }}
-          className="h-12 w-12 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 cursor-pointer"
-          title="Add New Block"
-        >
-          <Plus className="h-5 w-5" />
-        </Button>
-      </div>
+      {/* Floating Action Bar */}
+      <FloatingActionBar
+        onAddBlock={(newBlock) => {
+          setBlockData((prev: BlockProjectData) => ({
+            ...prev,
+            blocks: [...prev.blocks, newBlock]
+          }));
+        }}
+      />
     </div>
   );
 } 
