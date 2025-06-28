@@ -277,7 +277,7 @@ export default function BlockPreview({
   return (
     <div
       ref={blockRef}
-      className={`block-preview relative transition-all duration-200 ${isDragging ? 'opacity-30' : ''} ${isEditable ? 'hover:shadow-lg hover:bg-gray-50 hover:border-blue-400 hover:border' : ''}`}
+      className={`block-preview relative transition-all duration-200 hover:shadow-lg hover:bg-gray-50 hover:border-blue-400 hover:border ${isDragging ? 'opacity-30' : ''}`}
       style={getBlockStyles()}
       draggable={isEditable}
       onDragStart={isEditable ? handleDragStart : undefined}
