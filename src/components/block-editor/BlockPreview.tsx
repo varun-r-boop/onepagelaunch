@@ -183,7 +183,7 @@ export default function BlockPreview({
       textAlign: block.style?.textAlign || 'left',
       position: 'relative',
       minHeight: '2rem',
-      cursor: isSelected ? 'default' : 'pointer',
+      cursor: isEditable ? 'grab' : 'default',
       width: block.style?.width || '100%',
     };
 
