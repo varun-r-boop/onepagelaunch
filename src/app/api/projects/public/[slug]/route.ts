@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getCachedProject, cacheProject } from '@/lib/redis';
 
 export async function GET(
   request: NextRequest,
@@ -12,22 +13,35 @@ export async function GET(
       return NextResponse.json({ error: 'Slug is required' }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    // Try to get project data from Redis cache first
+    let projectData = await getCachedProject(slug);
 
-    // Fetch project by slug
-    const { data: project, error } = await supabase
-      .from('projects')
-      .select('id')
-      .eq('slug', slug)
-      .single();
+    if (!projectData) {
+      // Cache miss - fetch from Supabase
+      const supabase = await createClient();
+      const { data: project, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('slug', slug)
+        .single();
 
-    if (error || !project) {
-      // Supabase returns an error if .single() finds no rows, which is what we want for an available slug
-      return NextResponse.json({ message: 'Slug is available' }, { status: 404 });
+      if (error || !project) {
+        // Supabase returns an error if .single() finds no rows, which is what we want for an available slug
+        return NextResponse.json({ message: 'Slug is available' }, { status: 404 });
+      }
+
+      // Cache the project data for future requests
+      projectData = project.data;
+      if (projectData) {
+        await cacheProject(slug, projectData);
+      }
     }
 
-    // If we find a project, the slug is taken
-    return NextResponse.json({ message: 'Slug is taken' }, { status: 200 });
+    // Return the project data
+    return NextResponse.json({ 
+      message: 'Slug is taken',
+      project: projectData 
+    }, { status: 200 });
 
   } catch (error) {
     console.error('Error fetching public project:', error);
