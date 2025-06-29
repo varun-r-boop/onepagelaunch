@@ -1,9 +1,16 @@
+'use client';
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, Home } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
-export default function AuthCodeError() {
+function AuthCodeErrorContent() {
+  const searchParams = useSearchParams();
+  const error = searchParams.get('error') || 'Unknown error';
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
       <div className="container mx-auto px-4">
@@ -20,7 +27,13 @@ export default function AuthCodeError() {
               <li>• Network connectivity issues</li>
               <li>• OAuth configuration problems</li>
               <li>• Temporary service interruption</li>
+              <li>• Invalid or expired authentication link</li>
             </ul>
+            {error !== 'Unknown error' && (
+              <div className="bg-gray-100 p-3 rounded text-sm text-gray-700">
+                <strong>Error details:</strong> {error}
+              </div>
+            )}
             <div className="pt-4">
               <Link href="/">
                 <Button size="lg">
@@ -33,5 +46,20 @@ export default function AuthCodeError() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function AuthCodeError() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AuthCodeErrorContent />
+    </Suspense>
   );
 } 

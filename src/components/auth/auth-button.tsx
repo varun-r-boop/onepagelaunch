@@ -33,16 +33,6 @@ export function AuthButton() {
     return () => subscription.unsubscribe();
   }, [supabase.auth]);
 
-  const handleSignIn = async () => {
-    setLoading(true);
-    await supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: {
-        redirectTo: `${window.location.protocol}//${window.location.host}/auth/callback?next=/dashboard`,
-      },
-    });
-  };
-
   const handleSignOut = async () => {
     setLoading(true);
     await supabase.auth.signOut();
@@ -60,10 +50,10 @@ export function AuthButton() {
   if (user) {
     return (
       <div className="flex items-center gap-2">
-        <Link href="/dashboard">
+        <Link href="/create">
           <Button variant="outline" size="sm">
             <UserIcon className="h-4 w-4 mr-2" />
-            Dashboard
+            My Projects
           </Button>
         </Link>
         <Button variant="outline" size="sm" onClick={handleSignOut}>
@@ -75,9 +65,18 @@ export function AuthButton() {
   }
 
   return (
-    <Button onClick={handleSignIn} variant="outline">
-      <Github className="h-4 w-4 mr-2" />
-      Sign in with GitHub
-    </Button>
+    <div className="flex items-center gap-2">
+      <Link href="/auth/signin">
+        <Button variant="outline" size="sm">
+          Sign In
+        </Button>
+      </Link>
+      <Link href="/auth/signup">
+        <Button size="sm">
+          <Github className="h-4 w-4 mr-2" />
+          Sign Up
+        </Button>
+      </Link>
+    </div>
   );
 } 
