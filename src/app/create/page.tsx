@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Github, ArrowLeft } from 'lucide-react';
@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
 import type { SupabaseProject } from '@/lib/types';
 
-export default function CreatePage() {
+function CreatePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
@@ -17,7 +17,6 @@ export default function CreatePage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
   
   const [slug, setSlug] = useState('');
   const [isSlugAvailable, setIsSlugAvailable] = useState<boolean | null>(null);
@@ -96,57 +95,46 @@ export default function CreatePage() {
             // If no project with this slug exists, continue to create a new one
             // (don't redirect to existing projects when user specifically wants this slug)
           }
-          
-          // Create a new project with the entered slug
+
+          // Create project with API
           const blankProjectData = {
-            projectName: 'My New Project',
-            slug: urlSlug,
-            blocks: [
+            "blocks": [
               {
-                id: 'hero-block',
-                type: 'block',
-                title: '🚀 Welcome to My Project',
-                content: 'This is a powerful tool that helps you build amazing things.',
-                style: {
-                  bgColor: '#f8fafc',
-                  padding: '2rem',
-                  textAlign: 'center',
+                "id": "hero-1",
+                "type": "hero",
+                "data": {
+                  "title": "Welcome to my page",
+                  "subtitle": "I'm building something amazing. Stay tuned!",
+                  "primaryButton": {
+                    "text": "Get Started",
+                    "url": "#"
+                  },
+                  "secondaryButton": {
+                    "text": "Learn More",
+                    "url": "#"
+                  }
                 },
-              },
-              {
-                id: 'features-block',
-                type: 'block',
-                title: '💡 Key Features',
-                style: {
-                  bgColor: '#ffffff',
-                  padding: '2rem',
-                  borderColor: '#e2e8f0',
-                },
-                children: [
-                  {
-                    id: 'feature-1',
-                    type: 'inline',
-                    title: '⚡ Fast Performance',
-                    content: 'Lightning-fast loading times',
-                  },
-                  {
-                    id: 'feature-2',
-                    type: 'inline',
-                    title: '🧱 Modular Design',
-                    content: 'Build with reusable components',
-                  },
-                  {
-                    id: 'feature-3',
-                    type: 'inline',
-                    title: '🎨 Beautiful UI',
-                    content: 'Modern and responsive design',
-                  },
-                ],
-              },
+                "style": {
+                  "backgroundColor": "#ffffff",
+                  "textColor": "#1f2937",
+                  "primaryButtonColor": "#3b82f6",
+                  "secondaryButtonColor": "#6b7280"
+                }
+              }
             ],
+            "globalStyles": {
+              "fontFamily": "Inter",
+              "primaryColor": "#3b82f6",
+              "backgroundColor": "#ffffff"
+            },
+            "metadata": {
+              "title": `${urlSlug}'s Page`,
+              "description": "Built with OnePageLaunch",
+              "favicon": "/favicon.svg"
+            },
+            "slug": urlSlug
           };
-          
-          // Use the API to create the project consistently
+
           let response;
           let result;
           
@@ -196,153 +184,71 @@ export default function CreatePage() {
     }
   }, [user, urlSlug, supabase, router]);
 
-  const handleSignIn = async () => {
-    setIsSigningIn(true);
-    try {
-      const redirectTo = slug 
-        ? `${window.location.protocol}//${window.location.host}/auth/callback?next=/create&slug=${encodeURIComponent(slug)}`
-        : `${window.location.protocol}//${window.location.host}/auth/callback?next=/create`;
-        
-      await supabase.auth.signInWithOAuth({
-        provider: 'github',
-        options: {
-          redirectTo,
-        },
-      });
-    } catch (error) {
-      console.warn('Sign in failed:', error);
-      toast.error('Failed to sign in. Please try again.');
-      setIsSigningIn(false);
-    }
-  };
-
-  const checkSlugAvailability = async (currentSlug: string) => {
-    if (!currentSlug) {
+  const checkSlugAvailability = async (slugToCheck: string) => {
+    if (!slugToCheck.trim()) {
       setIsSlugAvailable(null);
       return;
     }
+    
     setIsCheckingSlug(true);
     try {
-      const response = await fetch(`/api/projects/public/${currentSlug}`);
-      setIsSlugAvailable(!response.ok);
+      const response = await fetch(`/api/projects/public/${encodeURIComponent(slugToCheck)}`);
+      const data = await response.json();
+      setIsSlugAvailable(!data.exists);
     } catch (error) {
-      console.warn('Unable to check slug availability:', error);
-      // Default to available if we can't check
-      setIsSlugAvailable(true);
+      console.warn('Error checking slug availability:', error);
+      setIsSlugAvailable(null);
     } finally {
       setIsCheckingSlug(false);
     }
   };
 
-  // Debounce slug check with shorter delay for better UX
+  // Debounce slug check
   useEffect(() => {
     const handler = setTimeout(() => {
       checkSlugAvailability(slug);
-    }, 300); // Reduced from 500ms to 300ms
+    }, 300);
 
     return () => {
       clearTimeout(handler);
     };
   }, [slug]);
 
-  const handleCreatePage = async () => {
-    if (!user) {
-      toast.error('Please sign in first');
-      return;
-    }
-
-    if (!slug) {
-      toast.error('Please enter a URL slug');
-      return;
-    }
-
-    if (!isSlugAvailable) {
-      toast.error('This URL slug is already taken');
-      return;
-    }
-
-    setIsCreating(true);
-    try {
-      // Create a blank page with default content
-      const blankProjectData = {
-        projectName: 'My New Project',
-        slug,
-        blocks: [
-          {
-            id: 'hero-block',
-            type: 'block',
-            title: '🚀 Welcome to My Project',
-            content: 'This is a powerful tool that helps you build amazing things.',
-            style: {
-              bgColor: '#f8fafc',
-              padding: '2rem',
-              textAlign: 'center'
-            }
-          },
-          {
-            id: 'features-block',
-            type: 'block',
-            title: '💡 Key Features',
-            style: {
-              bgColor: '#ffffff',
-              padding: '2rem',
-              borderColor: '#e2e8f0'
-            },
-            children: [
-              {
-                id: 'feature-1',
-                type: 'inline',
-                title: '⚡ Fast Performance',
-                content: 'Lightning-fast loading times'
-              },
-              {
-                id: 'feature-2',
-                type: 'inline',
-                title: '🧱 Modular Design',
-                content: 'Build with reusable components'
-              },
-              {
-                id: 'feature-3',
-                type: 'inline',
-                title: '🎨 Beautiful UI',
-                content: 'Modern and responsive design'
-              }
-            ]
-          }
-        ]
-      };
-
-      const response = await fetch('/api/projects', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          projectData: blankProjectData
-        }),
-      });
-
-      const result = await response.json();
-      
-      if (result.success) {
-        toast.success('Page created successfully! Redirecting to your live page...');
-        // Redirect to the live page where they can edit
-        router.push(`/${result.slug}`);
-      } 
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Error creating page:', error);
-      }
-      toast.error('An unexpected error occurred. Please try again.');
-    } finally {
-      setIsCreating(false);
+  const handleSlugSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (slug && isSlugAvailable) {
+      // Redirect to signup with slug as parameter
+      router.push(`/auth/signup?slug=${encodeURIComponent(slug)}`);
     }
   };
 
-  // Show loading state only briefly
+  const handleGitHubSignIn = async () => {
+    setIsSigningIn(true);
+    try {
+      const redirectTo = `${window.location.origin}/auth/callback${urlSlug ? `?slug=${encodeURIComponent(urlSlug)}` : ''}`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo
+        }
+      });
+      
+      if (error) {
+        console.error('GitHub sign in error:', error);
+        toast.error(error.message || 'Failed to sign in with GitHub');
+      }
+    } catch (error) {
+      console.error('Unexpected error during GitHub sign in:', error);
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
+
+  // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
@@ -351,91 +257,138 @@ export default function CreatePage() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-white text-gray-800 font-sans flex items-center justify-center px-4">
-      <div className="max-w-lg w-full bg-white border border-gray-200 rounded-2xl p-8 md:p-10 text-center shadow-xl">
-        <div className="text-3xl mb-4">🧱</div>
-        <h1 className="text-2xl font-semibold mb-2">Build Your Site, Brick by Brick</h1>
-        <p className="text-gray-500 mb-6 text-sm">Launch your product site in minutes using modular blocks — no code required.</p>
+  // If user is authenticated, they shouldn't see this page unless there was an error
+  if (user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Setting up your project...</p>
+        </div>
+      </div>
+    );
+  }
 
-        {/* Back button */}
-        <div className="mb-6">
-          <Link href="/" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700">
-            <ArrowLeft className="h-4 w-4 mr-1" />
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
+            <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Home
           </Link>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Create Your Page</h1>
+          <p className="text-gray-600">
+            {urlSlug ? `Ready to create your page at /${urlSlug}` : 'Get started by signing in'}
+          </p>
         </div>
 
-        {/* Sign-in section */}
-        {!user && (
-          <div className="transition-opacity duration-300 ease-in mb-6">
-            <button 
-              onClick={handleSignIn}
-              disabled={isSigningIn}
-              className="w-full bg-black text-white py-3 rounded-lg hover:opacity-90 transition flex justify-center items-center gap-2 disabled:opacity-50 cursor-pointer"
-            >
-              <Github className="w-5 h-5" />
-              {isSigningIn ? 'Signing in...' : 'Continue with GitHub'}
-            </button>
+        {urlSlug && (
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-700 mb-2">
+              <strong>Your page URL will be:</strong>
+            </p>
+            <p className="font-mono text-blue-800 bg-white px-3 py-2 rounded border">
+              onepagelaunch.vercel.app/{urlSlug}
+            </p>
           </div>
         )}
 
-        {/* Slug form - only show if user is signed in */}
-        {!urlSlug && user && (
-          <form 
-            className="space-y-4 transition-all duration-500 ease-in" 
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleCreatePage();
-            }}
+        <div className="space-y-4">
+          <button
+            onClick={handleGitHubSignIn}
+            disabled={isSigningIn}
+            className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <label className="block text-left text-sm font-medium text-gray-700">
-              Choose your site link
-            </label>
-            <div className="flex items-center border rounded-lg overflow-hidden">
-              <span className="px-3 text-gray-500 bg-gray-100">onepagelaunch.vercel.app/</span>
-              <input 
-                name="slug" 
-                id="slug-input" 
-                type="text" 
-                className="flex-1 px-3 py-2 outline-none" 
-                placeholder="yourname" 
-                value={slug}
-                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                required 
-              />
+            <Github className="h-5 w-5 mr-3" />
+            {isSigningIn ? 'Signing in...' : 'Continue with GitHub'}
+          </button>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
             </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">or</span>
+            </div>
+          </div>
 
-            <p className="text-sm text-gray-500 text-left">
-              Your site will be: 
-              <span className="font-mono bg-gray-100 px-2 py-1 rounded ml-1">
-              onepagelaunch.vercel.app/{slug || 'yourname'}
-              </span>
-            </p>
+          <Link 
+            href={`/auth/signup${urlSlug ? `?slug=${encodeURIComponent(urlSlug)}` : ''}`}
+            className="w-full flex items-center justify-center px-4 py-3 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Sign up with Email
+          </Link>
+        </div>
 
-            {/* Slug availability indicator */}
-            {slug && (
-              <div className="text-left">
-                {isCheckingSlug ? (
-                  <span className="text-sm text-gray-500">Checking availability...</span>
-                ) : isSlugAvailable === true ? (
-                  <span className="text-sm text-green-600">✓ This URL is available</span>
-                ) : isSlugAvailable === false ? (
-                  <span className="text-sm text-red-600">✗ This URL is already taken</span>
-                ) : null}
-              </div>
-            )}
-
-            <button 
-              type="submit" 
-              disabled={isCreating || !isSlugAvailable || !slug}
-              className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600">
+            Already have an account?{' '}
+            <Link 
+              href={`/auth/signin${urlSlug ? `?slug=${encodeURIComponent(urlSlug)}` : ''}`}
+              className="font-medium text-blue-600 hover:text-blue-500"
             >
-              {isCreating ? 'Creating...' : '🚀 Launch My Page'}
-            </button>
-          </form>
+              Sign in
+            </Link>
+          </p>
+        </div>
+
+        {!urlSlug && (
+          <div className="mt-8 pt-8 border-t border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Or choose a custom URL</h3>
+            <form onSubmit={handleSlugSubmit} className="space-y-4">
+              <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden focus-within:border-blue-500">
+                <span className="px-3 py-3 text-gray-500 bg-gray-50 text-sm border-r border-gray-300">
+                  onepagelaunch.vercel.app/
+                </span>
+                <input
+                  type="text"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                  placeholder="your-name"
+                  className="flex-1 px-3 py-3 outline-none"
+                  required
+                />
+              </div>
+              
+              {slug && (
+                <div className="text-sm">
+                  {isCheckingSlug ? (
+                    <span className="text-gray-500">Checking availability...</span>
+                  ) : isSlugAvailable === true ? (
+                    <span className="text-green-600">✓ Available</span>
+                  ) : isSlugAvailable === false ? (
+                    <span className="text-red-600">✗ Already taken</span>
+                  ) : null}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={!slug || !isSlugAvailable || isCheckingSlug}
+                className="w-full px-4 py-3 border border-transparent rounded-lg shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Continue with this URL
+              </button>
+            </form>
+          </div>
         )}
       </div>
     </div>
+  );
+}
+
+export default function CreatePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <CreatePageContent />
+    </Suspense>
   );
 } 

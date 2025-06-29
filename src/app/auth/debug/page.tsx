@@ -1,14 +1,14 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
 
-export default function AuthDebugPage() {
+function AuthDebugContent() {
   const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const supabase = createClient();
@@ -19,7 +19,7 @@ export default function AuthDebugPage() {
       setUser(user);
     };
     getUser();
-  }, []);
+  }, [supabase.auth]);
 
   const allParams = Object.fromEntries(searchParams.entries());
   
@@ -139,5 +139,20 @@ export default function AuthDebugPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AuthDebugPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading debug information...</p>
+        </div>
+      </div>
+    }>
+      <AuthDebugContent />
+    </Suspense>
   );
 } 
