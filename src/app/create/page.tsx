@@ -1,15 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Github, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
+import type { SupabaseProject } from '@/lib/types';
 
 export default function CreatePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   
   const [user, setUser] = useState<User | null>(null);
@@ -21,14 +23,21 @@ export default function CreatePage() {
   const [isSlugAvailable, setIsSlugAvailable] = useState<boolean | null>(null);
   const [isCheckingSlug, setIsCheckingSlug] = useState(false);
 
+  // Get slug from URL parameters
+  const urlSlug = searchParams.get('slug');
+
   // Load user on mount with faster initial check
   useEffect(() => {
     const getUser = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+          console.warn('Unable to get user:', error.message);
+        } else {
+          setUser(user);
+        }
       } catch (error) {
-        console.error('Error getting user:', error);
+        console.warn('Error loading user:', error);
       } finally {
         setLoading(false);
       }
@@ -44,19 +53,164 @@ export default function CreatePage() {
     );
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [supabase.auth]);
+
+  // Set slug from URL parameter if available
+  useEffect(() => {
+    if (urlSlug) {
+      setSlug(urlSlug);
+    }
+  }, [urlSlug]);
+
+  // Add this effect after user and slug are set
+  useEffect(() => {
+    if (user && urlSlug && urlSlug.trim() !== '') {
+      const checkOrCreateProject = async () => {
+        setLoading(true);
+        try {
+          // Validate user is properly authenticated
+          if (!user.id) {
+            console.warn('User ID not available, skipping project creation');
+            setLoading(false);
+            return;
+          }
+
+          // Fetch all projects for this user with error handling
+          const { data: projects, error: projectsError } = await supabase
+            .from('projects')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('updated_at', { ascending: false });
+          
+          if (projectsError) {
+            console.warn('Error fetching projects:', projectsError.message);
+            // Continue with project creation even if we can't fetch existing projects
+          } else if (projects && projects.length > 0) {
+            // Check if a project with the entered slug exists
+            const match = (projects as SupabaseProject[]).find((p) => p.slug === urlSlug);
+            if (match) {
+              // Project with this slug already exists, redirect to it
+              router.push(`/${urlSlug}`);
+              return;
+            }
+            // If no project with this slug exists, continue to create a new one
+            // (don't redirect to existing projects when user specifically wants this slug)
+          }
+          
+          // Create a new project with the entered slug
+          const blankProjectData = {
+            projectName: 'My New Project',
+            slug: urlSlug,
+            blocks: [
+              {
+                id: 'hero-block',
+                type: 'block',
+                title: '🚀 Welcome to My Project',
+                content: 'This is a powerful tool that helps you build amazing things.',
+                style: {
+                  bgColor: '#f8fafc',
+                  padding: '2rem',
+                  textAlign: 'center',
+                },
+              },
+              {
+                id: 'features-block',
+                type: 'block',
+                title: '💡 Key Features',
+                style: {
+                  bgColor: '#ffffff',
+                  padding: '2rem',
+                  borderColor: '#e2e8f0',
+                },
+                children: [
+                  {
+                    id: 'feature-1',
+                    type: 'inline',
+                    title: '⚡ Fast Performance',
+                    content: 'Lightning-fast loading times',
+                  },
+                  {
+                    id: 'feature-2',
+                    type: 'inline',
+                    title: '🧱 Modular Design',
+                    content: 'Build with reusable components',
+                  },
+                  {
+                    id: 'feature-3',
+                    type: 'inline',
+                    title: '🎨 Beautiful UI',
+                    content: 'Modern and responsive design',
+                  },
+                ],
+              },
+            ],
+          };
+          
+          // Use the API to create the project consistently
+          let response;
+          let result;
+          
+          try {
+            response = await fetch('/api/projects', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                projectData: blankProjectData
+              }),
+            });
+
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            result = await response.json();
+          } catch (fetchError) {
+            console.warn('API request failed:', fetchError);
+            return;
+          }
+          
+          if (result.success) {
+            router.push(`/${urlSlug}`);
+          } else if (response.status === 403 && result.existingProject) {
+            // User already has a project, redirect to it without showing error
+            router.push(`/${result.existingProject.slug}`);
+          } else {
+            // Handle API errors gracefully
+            const errorMessage = result.error || 'Failed to create project. Please try again.';
+            console.warn('Project creation failed:', errorMessage);
+          }
+        } catch (error) {
+          // Handle any unexpected errors
+          console.warn('Unexpected error in checkOrCreateProject:', error);
+          toast.error('An unexpected error occurred. Please try again.');
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      // Add a small delay to ensure user is properly loaded
+      const timeoutId = setTimeout(checkOrCreateProject, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [user, urlSlug, supabase, router]);
 
   const handleSignIn = async () => {
     setIsSigningIn(true);
     try {
+      const redirectTo = slug 
+        ? `${window.location.protocol}//${window.location.host}/auth/callback?next=/create&slug=${encodeURIComponent(slug)}`
+        : `${window.location.protocol}//${window.location.host}/auth/callback?next=/create`;
+        
       await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
-          redirectTo: `${window.location.protocol}//${window.location.host}/auth/callback?next=/create`,
+          redirectTo,
         },
       });
     } catch (error) {
-      console.error('Error signing in:', error);
+      console.warn('Sign in failed:', error);
       toast.error('Failed to sign in. Please try again.');
       setIsSigningIn(false);
     }
@@ -72,8 +226,9 @@ export default function CreatePage() {
       const response = await fetch(`/api/projects/public/${currentSlug}`);
       setIsSlugAvailable(!response.ok);
     } catch (error) {
-      console.error('Error checking slug', error);
-      setIsSlugAvailable(false);
+      console.warn('Unable to check slug availability:', error);
+      // Default to available if we can't check
+      setIsSlugAvailable(true);
     } finally {
       setIsCheckingSlug(false);
     }
@@ -173,11 +328,11 @@ export default function CreatePage() {
         toast.success('Page created successfully! Redirecting to your live page...');
         // Redirect to the live page where they can edit
         router.push(`/${result.slug}`);
-      } else {
-        toast.error(result.error || 'Failed to create page. Please try again.');
-      }
+      } 
     } catch (error) {
-      console.error('Error creating page:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error creating page:', error);
+      }
       toast.error('An unexpected error occurred. Please try again.');
     } finally {
       setIsCreating(false);
@@ -226,7 +381,7 @@ export default function CreatePage() {
         )}
 
         {/* Slug form - only show if user is signed in */}
-        {user && (
+        {!urlSlug && user && (
           <form 
             className="space-y-4 transition-all duration-500 ease-in" 
             onSubmit={(e) => {

@@ -71,23 +71,43 @@ export async function POST(request: NextRequest) {
     } else {
       // --- CREATE NEW PROJECT ---
       // 1. Check if user already has a project
-      const { data: userProjects } = await supabase
+      const { data: userProjects, error: projectsError } = await supabase
         .from('projects')
-        .select('id')
+        .select('id, slug')
         .eq('user_id', user.id)
         .limit(1);
 
+      if (projectsError) {
+        console.error('Error checking user projects:', projectsError);
+        return NextResponse.json({ error: 'Failed to check existing projects.' }, { status: 500 });
+      }
+
       if (userProjects && userProjects.length > 0) {
         return NextResponse.json(
-          { error: 'You can only create one page. Please edit your existing page.' },
+          { 
+            error: 'You already have a project. Please edit your existing page instead.', 
+            existingProject: userProjects[0] 
+          },
           { status: 403 }
         );
       }
 
       // 2. Check slug uniqueness
-      const { data: slugCheck } = await supabase.from('projects').select('id').eq('slug', slug).single();
-      if (slugCheck) {
+      const { data: slugCheck, error: slugError } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('slug', slug)
+        .single();
+      
+      // If no error and we found data, slug is taken
+      if (!slugError && slugCheck) {
         return NextResponse.json({ error: 'This URL slug is already taken.' }, { status: 409 });
+      }
+      
+      // If error is not "PGRST116" (no rows), then it's a real error
+      if (slugError && slugError.code !== 'PGRST116') {
+        console.error('Error checking slug uniqueness:', slugError);
+        return NextResponse.json({ error: 'Failed to validate slug availability.' }, { status: 500 });
       }
 
       // 3. Insert new project
@@ -105,7 +125,11 @@ export async function POST(request: NextRequest) {
 
       if (insertError) {
         console.error('Error inserting project:', insertError);
-        return NextResponse.json({ error: 'Failed to create project.' }, { status: 500 });
+        console.error('Project data:', supabaseData);
+        return NextResponse.json({ 
+          error: 'Failed to create project. Please try again.',
+          details: process.env.NODE_ENV === 'development' ? insertError.message : undefined
+        }, { status: 500 });
       }
     }
 

@@ -1,12 +1,10 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-// import Link from "next/link"; // Remove unused import
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import type { User } from '@supabase/supabase-js';
-import { SupabaseProject } from '@/lib/types';
 
 const floatingBricks = [
   { style: 'top-[5%] left-[10%] w-[75px] h-[40px] bg-blue-200', delay: 0, duration: 4 },
@@ -48,17 +46,15 @@ const features = [
 ];
 
 export default function Home() {
-  const [user, setUser] = useState<User | null>(null);
-  const [userProjects, setUserProjects] = useState<SupabaseProject[]>([]);
-  const [isUserChecked, setIsUserChecked] = useState(false);
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [slug, setSlug] = useState('');
+  const [isSlugAvailable, setIsSlugAvailable] = useState<boolean | null>(null);
+  const [isCheckingSlug, setIsCheckingSlug] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
     // Show button immediately after a brief delay for better UX
     const timer = setTimeout(() => {
-      setInitialLoadComplete(true);
     }, 100);
 
     checkUserAndProjects();
@@ -77,54 +73,47 @@ export default function Home() {
 
   const checkUserAndProjects = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      setIsUserChecked(true);
-      
-      if (user) {
-        // Fetch user's projects in the background (don't block UI)
-        fetchUserProjects(user.id);
-      }
+      await supabase.auth.getUser();
     } catch (error) {
       console.error('Error checking user:', error);
-      setIsUserChecked(true);
     }
   };
 
-  const fetchUserProjects = async (userId: string) => {
+  const checkSlugAvailability = async (currentSlug: string) => {
+    if (!currentSlug) {
+      setIsSlugAvailable(null);
+      return;
+    }
+    setIsCheckingSlug(true);
     try {
-      const { data: projects } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('user_id', userId)
-        .order('updated_at', { ascending: false });
-      
-      if (projects && projects.length > 0) {
-        // Filter to only show block-based projects
-        const blockProjects = projects.filter(project => 
-          project.data.blocks && Array.isArray(project.data.blocks)
-        );
-        setUserProjects(blockProjects);
-      }
+      const response = await fetch(`/api/projects/public/${currentSlug}`);
+      setIsSlugAvailable(!response.ok);
     } catch (error) {
-      console.error('Error fetching user projects:', error);
+      console.error('Error checking slug', error);
+      setIsSlugAvailable(false);
+    } finally {
+      setIsCheckingSlug(false);
     }
   };
 
-  const handleStartBuilding = () => {
-    // Optimistic navigation - don't wait for loading state
-    if (user && userProjects.length > 0) {
-      // User is signed in and has projects - redirect to their most recent project
-      const mostRecentProject = userProjects[0];
-      router.push(`/${mostRecentProject.slug}`);
-    } else {
-      // User is not signed in or has no projects - go to create page
-      router.push('/create');
+  // Debounce slug check
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      checkSlugAvailability(slug);
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [slug]);
+
+  const handleSlugSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (slug && isSlugAvailable) {
+      // Redirect to signup with slug as parameter
+      router.push(`/auth/signup?slug=${encodeURIComponent(slug)}`);
     }
   };
-
-  // Show loading state only if we haven't checked user yet AND initial load isn't complete
-  const showLoading = !isUserChecked && !initialLoadComplete;
 
   return (
     <div className="relative min-h-screen bg-white text-gray-900 font-sans overflow-hidden">
@@ -207,7 +196,7 @@ export default function Home() {
           ))}
         </motion.section>
 
-        {/* CTA */}
+        {/* CTA or Slug Form */}
         <motion.section
           className="text-center mt-24"
           initial={{ opacity: 0, scale: 0.95 }}
@@ -215,13 +204,45 @@ export default function Home() {
           transition={{ duration: 0.7 }}
           viewport={{ once: true, amount: 0.2 }}
         >
-          <button
-            onClick={handleStartBuilding}
-            disabled={showLoading}
-            className="inline-block px-8 py-4 bg-black text-white rounded-xl shadow-lg hover:scale-105 transition-transform text-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {showLoading ? 'Loading...' : '🚀 Start Building Now'}
-          </button>
+          <div className="flex flex-col items-center justify-center max-w-md mx-auto">
+            <h2 className="text-2xl font-bold mb-6">Get started</h2>
+            <form onSubmit={handleSlugSubmit} className="w-full space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center flex-1 border border-gray-200 rounded-lg overflow-hidden focus-within:border-gray-400">
+                  <span className="px-3 py-3 text-gray-500 bg-gray-50 text-sm border-r border-gray-200">onepagelaunch.vercel.app/</span>
+                  <input
+                    type="text"
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                    placeholder="your-name"
+                    className="flex-1 px-3 py-3 outline-none"
+                    required
+                  />
+                </div>
+                {slug && (
+                  <div className="text-right min-w-[100px]">
+                    {isCheckingSlug ? (
+                      <span className="text-xs text-gray-500">Checking...</span>
+                    ) : isSlugAvailable === true ? (
+                      <span className="text-xs text-green-600">🧱 brick available</span>
+                    ) : isSlugAvailable === false ? (
+                      <span className="text-xs text-red-600">🧱 brick layed</span>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+              <button
+                type="submit"
+                disabled={!slug || !isSlugAvailable || isCheckingSlug}
+                className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              >
+                {isCheckingSlug ? 'Checking...' : 'Create'}
+              </button>
+            </form>
+            <div className="mt-4">
+              <Link href="/auth/signin" className="text-gray-400 hover:text-gray-600 text-sm">Already have an account?</Link>
+            </div>
+          </div>
         </motion.section>
       </main>
     </div>
