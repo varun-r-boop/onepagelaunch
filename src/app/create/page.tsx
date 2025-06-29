@@ -66,6 +66,7 @@ function CreatePageContent() {
     if (user && urlSlug && urlSlug.trim() !== '') {
       const checkOrCreateProject = async () => {
         setLoading(true);
+        console.log('Starting project creation/check process for slug:', urlSlug, 'user:', user.id);
         try {
           // Validate user is properly authenticated
           if (!user.id) {
@@ -98,6 +99,7 @@ function CreatePageContent() {
 
           // Create project with API
           const blankProjectData = {
+            "projectName": `${urlSlug}'s Page`,
             "blocks": [
               {
                 "id": "hero-1",
@@ -139,6 +141,7 @@ function CreatePageContent() {
           let result;
           
           try {
+            console.log('Making API request to create project with data:', blankProjectData);
             response = await fetch('/api/projects', {
               method: 'POST',
               headers: {
@@ -149,13 +152,19 @@ function CreatePageContent() {
               }),
             });
 
+            console.log('API response status:', response.status);
+            
             if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
+              const errorText = await response.text();
+              console.error('API error response:', errorText);
+              throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
             }
 
             result = await response.json();
+            console.log('API response result:', result);
           } catch (fetchError) {
             console.warn('API request failed:', fetchError);
+            toast.error('Failed to create project. Please try again.');
             return;
           }
           
@@ -168,6 +177,7 @@ function CreatePageContent() {
             // Handle API errors gracefully
             const errorMessage = result.error || 'Failed to create project. Please try again.';
             console.warn('Project creation failed:', errorMessage);
+            toast.error(errorMessage);
           }
         } catch (error) {
           // Handle any unexpected errors
@@ -273,7 +283,7 @@ function CreatePageContent() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
+          <Link href="/" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4 cursor-pointer">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Home
           </Link>
@@ -298,7 +308,7 @@ function CreatePageContent() {
           <button
             onClick={handleGitHubSignIn}
             disabled={isSigningIn}
-            className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             <Github className="h-5 w-5 mr-3" />
             {isSigningIn ? 'Signing in...' : 'Continue with GitHub'}
@@ -315,7 +325,7 @@ function CreatePageContent() {
 
           <Link 
             href={`/auth/signup${urlSlug ? `?slug=${encodeURIComponent(urlSlug)}` : ''}`}
-            className="w-full flex items-center justify-center px-4 py-3 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="w-full flex items-center justify-center px-4 py-3 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer"
           >
             Sign up with Email
           </Link>
@@ -326,7 +336,7 @@ function CreatePageContent() {
             Already have an account?{' '}
             <Link 
               href={`/auth/signin${urlSlug ? `?slug=${encodeURIComponent(urlSlug)}` : ''}`}
-              className="font-medium text-blue-600 hover:text-blue-500"
+              className="font-medium text-blue-600 hover:text-blue-500 cursor-pointer"
             >
               Sign in
             </Link>
@@ -366,7 +376,7 @@ function CreatePageContent() {
               <button
                 type="submit"
                 disabled={!slug || !isSlugAvailable || isCheckingSlug}
-                className="w-full px-4 py-3 border border-transparent rounded-lg shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-3 border border-transparent rounded-lg shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 Continue with this URL
               </button>
