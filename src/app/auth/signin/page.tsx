@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Github, Mail, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
-export default function SigninPage() {
+function SigninPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
@@ -76,19 +76,18 @@ export default function SigninPage() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setLoading(false);
+        const user = session?.user ?? null;
         
-        // If user signs in
-        if (event === 'SIGNED_IN' && session?.user) {
+        if (user) {
           if (slug) {
             router.push(`/create?slug=${encodeURIComponent(slug)}`);
           } else {
-            // Check if user has existing projects and redirect to most recent one
+            // Check if user has existing projects
             try {
               const { data: projects } = await supabase
                 .from('projects')
                 .select('slug, data, updated_at')
-                .eq('user_id', session.user.id)
+                .eq('user_id', user.id)
                 .order('updated_at', { ascending: false })
                 .limit(1);
 
@@ -104,7 +103,7 @@ export default function SigninPage() {
               console.warn('Unable to fetch user projects:', projectError);
             }
             
-            // Fallback: redirect to create page if no projects found
+            // Fallback: redirect to create page
             router.push('/create');
           }
         }
@@ -112,82 +111,57 @@ export default function SigninPage() {
     );
 
     return () => subscription.unsubscribe();
-  }, [slug, router, supabase]);
-
-  const handleGitHubSignIn = async () => {
-    setIsSigningIn(true);
-    try {
-      const redirectTo = slug 
-        ? `${window.location.protocol}//${window.location.host}/auth/callback?next=/create&slug=${encodeURIComponent(slug)}`
-        : `${window.location.protocol}//${window.location.host}/auth/callback?next=/user-projects`;
-        
-      await supabase.auth.signInWithOAuth({
-        provider: 'github',
-        options: {
-          redirectTo,
-        },
-      });
-    } catch (error) {
-      console.error('Error signing in with GitHub:', error);
-      toast.error('Failed to sign in with GitHub. Please try again.');
-      setIsSigningIn(false);
-    }
-  };
+  }, [supabase, router, slug]);
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     setIsSigningIn(true);
+
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
         toast.error(error.message);
-      } else if (data.user) {
-        toast.success('Signed in successfully!');
-        if (slug) {
-          router.push(`/create?slug=${encodeURIComponent(slug)}`);
-        } else {
-          // Check if user has existing projects and redirect to most recent one
-          try {
-            const { data: projects } = await supabase
-              .from('projects')
-              .select('slug, data, updated_at')
-              .eq('user_id', data.user.id)
-              .order('updated_at', { ascending: false })
-              .limit(1);
-
-            if (projects && projects.length > 0) {
-              const mostRecentProject = projects[0];
-              // Check if it's a block-based project
-              if (mostRecentProject.data && mostRecentProject.data.blocks && Array.isArray(mostRecentProject.data.blocks)) {
-                router.push(`/${mostRecentProject.slug}`);
-                return;
-              }
-            }
-          } catch (projectError) {
-            console.warn('Unable to fetch user projects:', projectError);
-          }
-          
-          // Fallback: redirect to create page if no projects found
-          router.push('/create');
-        }
       }
+      // Success will be handled by the auth state change listener
     } catch (error) {
-      console.error('Error signing in:', error);
-      toast.error('An unexpected error occurred. Please try again.');
+      console.error('Sign in error:', error);
+      toast.error('An unexpected error occurred');
     } finally {
       setIsSigningIn(false);
     }
   };
 
-  // Show loading state
+  const handleGitHubSignIn = async () => {
+    setIsSigningIn(true);
+    try {
+      const redirectTo = `${window.location.origin}/auth/callback${slug ? `?slug=${encodeURIComponent(slug)}` : ''}`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo
+        }
+      });
+      
+      if (error) {
+        console.error('GitHub sign in error:', error);
+        toast.error(error.message || 'Failed to sign in with GitHub');
+      }
+    } catch (error) {
+      console.error('Unexpected error during GitHub sign in:', error);
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
+
+  // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
@@ -197,105 +171,125 @@ export default function SigninPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-gray-800 font-sans flex items-center justify-center px-4">
-      <div className="max-w-md w-full bg-white border border-gray-200 rounded-2xl p-8 md:p-10 text-center shadow-xl">
-        <div className="text-3xl mb-4">🧱</div>
-        <h1 className="text-2xl font-semibold mb-2">Welcome Back</h1>
-        <p className="text-gray-500 mb-6 text-sm">
-          {slug ? `Ready to continue building onepagelaunch.vercel.app/${slug}?` : 'Sign in to your OnePageLaunch account'}
-        </p>
-
-        {/* Back button */}
-        <div className="mb-6">
-          <Link href="/" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700">
-            <ArrowLeft className="h-4 w-4 mr-1" />
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
+            <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Home
           </Link>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome back</h1>
+          <p className="text-gray-600">Sign in to your account</p>
         </div>
 
-        {/* GitHub Sign In */}
-        <div className="mb-6">
-          <button 
-            onClick={handleGitHubSignIn}
-            disabled={isSigningIn}
-            className="w-full bg-black text-white py-3 rounded-lg hover:opacity-90 transition flex justify-center items-center gap-2 disabled:opacity-50 cursor-pointer"
-          >
-            <Github className="w-5 h-5" />
-            {isSigningIn ? 'Signing in...' : 'Continue with GitHub'}
-          </button>
-        </div>
-
-        {/* Divider */}
-        <div className="relative mb-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300"></div>
+        {slug && (
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-700 mb-2">
+              <strong>You&apos;ll be taken to:</strong>
+            </p>
+            <p className="font-mono text-blue-800 bg-white px-3 py-2 rounded border">
+              onepagelaunch.vercel.app/{slug}
+            </p>
           </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or continue with email</span>
-          </div>
-        </div>
+        )}
 
-        {/* Email Sign In Form */}
-        <form onSubmit={handleEmailSignIn} className="space-y-4">
-          <div className="text-left">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+        <form onSubmit={handleEmailSignIn} className="space-y-4 mb-6">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
               Email
             </label>
-            <input 
-              type="email" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
-              required
-            />
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
           </div>
 
-          <div className="text-left">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
               Password
             </label>
             <div className="relative">
-              <input 
+              <input
+                id="password"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                placeholder="Your password"
+                className="w-full pr-10 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4 text-gray-400" />
-                ) : (
-                  <Eye className="h-4 w-4 text-gray-400" />
-                )}
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
           </div>
 
-          <button 
+          <button
             type="submit"
-            disabled={isSigningIn || !email || !password}
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+            disabled={isSigningIn}
+            className="w-full px-4 py-3 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Mail className="w-4 h-4" />
-            {isSigningIn ? 'Signing in...' : 'Sign in with Email'}
+            {isSigningIn ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
 
-        {/* Sign up link */}
-        <div className="mt-6 text-sm text-gray-500">
-          Don&apos;t have an account?{' '}
-          <Link href={`/auth/signup${slug ? `?slug=${encodeURIComponent(slug)}` : ''}`} className="text-indigo-600 hover:text-indigo-500">
-            Sign up
-          </Link>
+        <div className="relative mb-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">or</span>
+          </div>
+        </div>
+
+        <button
+          onClick={handleGitHubSignIn}
+          disabled={isSigningIn}
+          className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Github className="h-5 w-5 mr-3" />
+          {isSigningIn ? 'Signing in...' : 'Continue with GitHub'}
+        </button>
+
+        <div className="mt-6 text-center">
+                       <p className="text-sm text-gray-600">
+               Don&apos;t have an account?{' '}
+            <Link 
+              href={`/auth/signup${slug ? `?slug=${encodeURIComponent(slug)}` : ''}`}
+              className="font-medium text-blue-600 hover:text-blue-500"
+            >
+              Sign up
+            </Link>
+          </p>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SigninPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SigninPageContent />
+    </Suspense>
   );
 } 
