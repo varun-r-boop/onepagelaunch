@@ -96,7 +96,7 @@ export default function FloatingActionBar({ onAddBlock }: FloatingActionBarProps
       {/* Main Floating Button */}
       <Button
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`h-12 w-12 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 cursor-pointer transition-all duration-200 ${
+        className={`h-12 w-12 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 transition-all duration-200 ${
           isExpanded ? 'rotate-45' : ''
         }`}
         title="Add New Block"

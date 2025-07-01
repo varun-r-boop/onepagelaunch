@@ -120,7 +120,7 @@ export default function Dashboard() {
             </div>
             <div className="flex gap-2">
               <Link href="/create">
-                <Button size="lg" className="cursor-pointer">
+                <Button size="lg">
                   <Plus className="h-4 w-4 mr-2" />
                   Create New Project
                 </Button>
@@ -186,13 +186,13 @@ export default function Dashboard() {
                     <CardContent>
                       <div className="flex gap-2">
                         <Link href={`/${project.slug}`} target="_blank">
-                          <Button variant="outline" size="sm" className="cursor-pointer">
+                          <Button variant="outline" size="sm">
                             <Eye className="h-4 w-4 mr-1" />
                             View
                           </Button>
                         </Link>
                         <Link href={`/${project.slug}`}>
-                          <Button variant="outline" size="sm" className="cursor-pointer">
+                          <Button variant="outline" size="sm">
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
                           </Button>
@@ -201,7 +201,7 @@ export default function Dashboard() {
                           variant="outline" 
                           size="sm" 
                           onClick={() => deleteProject(project.id)}
-                          className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete

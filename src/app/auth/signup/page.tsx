@@ -123,20 +123,32 @@ function SignupPageContent() {
     setIsSigningUp(true);
 
     try {
-      const redirectTo = `${window.location.origin}/auth/callback${slug ? `?slug=${encodeURIComponent(slug)}` : ''}`;
+      // TEMPORARY: Email verification disabled for easier signup flow
+      // TODO: Uncomment the lines below to re-enable email verification
+      // const redirectTo = `${window.location.origin}/auth/callback${slug ? `?slug=${encodeURIComponent(slug)}` : ''}`;
       
-      const { error } = await supabase.auth.signUp({
+      // TEMPORARY: Try to create user without email confirmation requirement
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: redirectTo,
+          data: {
+            // Any additional user metadata can go here
+          }
+          // TODO: When re-enabling email verification, uncomment the line below:
+          // emailRedirectTo: redirectTo,
         }
       });
+
+      // TEMPORARY: Log the response to debug any issues
+      console.log('Signup response:', { data, error });
 
       if (error) {
         toast.error(error.message);
       } else {
-        toast.success('Check your email for the confirmation link!');
+        // TEMPORARY: Updated success message for immediate signup (no email verification)
+        // TODO: Change back to 'Check your email for the confirmation link!' when re-enabling verification
+        toast.success('Account created successfully! You can now sign in.');
       }
     } catch (error) {
       console.error('Sign up error:', error);
@@ -276,7 +288,7 @@ function SignupPageContent() {
           <button
             type="submit"
             disabled={isSigningUp}
-            className="w-full px-4 py-3 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-4 py-3 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {isSigningUp ? 'Creating account...' : 'Create account'}
           </button>
@@ -294,7 +306,7 @@ function SignupPageContent() {
         <button
           onClick={handleGitHubSignUp}
           disabled={isSigningUp}
-          className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
           <Github className="h-5 w-5 mr-3" />
           {isSigningUp ? 'Signing up...' : 'Continue with GitHub'}

@@ -71,6 +71,9 @@ export async function GET(request: Request) {
     }
   }
 
+  // TEMPORARY: Email verification flow commented out - users can sign up without email verification
+  // TODO: Uncomment the section below to re-enable email verification
+  /*
   // Handle case where there's no code (might be email confirmation)
   console.log('No code parameter found, checking for other auth parameters')
   
@@ -125,6 +128,7 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}/auth/auth-code-error?error=${encodeURIComponent(`Email verification failed: ${error.message}`)}`)
     }
   }
+  */
 
   // return the user to an error page with instructions
   console.log('Redirecting to auth-code-error')

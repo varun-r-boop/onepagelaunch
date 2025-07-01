@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Github, ArrowLeft } from 'lucide-react';
@@ -21,6 +21,9 @@ function CreatePageContent() {
   const [slug, setSlug] = useState('');
   const [isSlugAvailable, setIsSlugAvailable] = useState<boolean | null>(null);
   const [isCheckingSlug, setIsCheckingSlug] = useState(false);
+
+  // Flag to prevent duplicate project creation calls
+  const projectCreationInitiated = useRef<string | null>(null);
 
   // Get slug from URL parameters
   const urlSlug = searchParams.get('slug');
@@ -64,16 +67,35 @@ function CreatePageContent() {
   // Add this effect after user and slug are set
   useEffect(() => {
     if (user && urlSlug && urlSlug.trim() !== '') {
+      // Create unique key for this user+slug combination
+      const creationKey = `${user.id}-${urlSlug}`;
+      
+      // Check if we've already initiated project creation for this combination
+      if (projectCreationInitiated.current === creationKey) {
+        console.log('Project creation already initiated for:', creationKey);
+        return;
+      }
+      
       const checkOrCreateProject = async () => {
+        // Add safety checks before starting
+        if (!user || !user.id) {
+          console.warn('User not properly loaded, skipping project creation');
+          setLoading(false);
+          return;
+        }
+        
+        if (!urlSlug) {
+          console.warn('No URL slug available, skipping project creation');
+          setLoading(false);
+          return;
+        }
+
+        // Mark this combination as initiated
+        projectCreationInitiated.current = creationKey;
+
         setLoading(true);
         console.log('Starting project creation/check process for slug:', urlSlug, 'user:', user.id);
         try {
-          // Validate user is properly authenticated
-          if (!user.id) {
-            console.warn('User ID not available, skipping project creation');
-            setLoading(false);
-            return;
-          }
 
           // Fetch all projects for this user with error handling
           const { data: projects, error: projectsError } = await supabase
@@ -185,12 +207,13 @@ function CreatePageContent() {
           toast.error('An unexpected error occurred. Please try again.');
         } finally {
           setLoading(false);
+          // Reset the flag so user can try again if needed
+          projectCreationInitiated.current = null;
         }
       };
       
-      // Add a small delay to ensure user is properly loaded
-      const timeoutId = setTimeout(checkOrCreateProject, 100);
-      return () => clearTimeout(timeoutId);
+      // Call checkOrCreateProject directly (duplicate prevention handled above)
+      void checkOrCreateProject();
     }
   }, [user, urlSlug, supabase, router]);
 

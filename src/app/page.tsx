@@ -234,7 +234,7 @@ export default function Home() {
               <button
                 type="submit"
                 disabled={!slug || !isSlugAvailable || isCheckingSlug}
-                className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer font-medium"
               >
                 {isCheckingSlug ? 'Checking...' : 'Create'}
               </button>
