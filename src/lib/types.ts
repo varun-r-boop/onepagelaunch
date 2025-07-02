@@ -25,7 +25,7 @@ export interface CTAButton {
 export interface Block {
   id: string;
   type: 'block' | 'inline';
-  blockType?: 'text' | 'cta' | 'hero' | 'features' | 'testimonial' | 'contact';
+  blockType?: 'text' | 'cta' | 'hero' | 'features' | 'testimonial' | 'contact' | 'pricing' | 'faq';
   title?: string;
   content?: string;
   style?: BlockStyle;
