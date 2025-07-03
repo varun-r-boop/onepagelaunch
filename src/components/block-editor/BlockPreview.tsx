@@ -189,7 +189,10 @@ export default function BlockPreview({
 
     if (block.type === 'inline') {
       styles.display = 'inline-block';
-      styles.width = 'auto';
+      // Only override width if no specific width is set
+      if (!block.style?.width || block.style.width === '100%') {
+        styles.width = 'auto';
+      }
       styles.margin = '0.25rem';
     }
 

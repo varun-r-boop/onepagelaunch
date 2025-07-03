@@ -95,6 +95,29 @@ export default function StylePanel({ style, onUpdate, onClose }: StylePanelProps
         </div>
 
         <div>
+          <Label htmlFor="width">Width</Label>
+          <div className="flex gap-2 mt-1">
+            <Input
+              id="width"
+              value={style.width || ''}
+              onChange={(e) => updateStyle('width', e.target.value)}
+              placeholder="100% or 300px or auto"
+            />
+            <select
+              value={style.width || '100%'}
+              onChange={(e) => updateStyle('width', e.target.value)}
+              className="p-2 border rounded-md text-sm min-w-20"
+            >
+              <option value="auto">Auto</option>
+              <option value="25%">25%</option>
+              <option value="50%">50%</option>
+              <option value="75%">75%</option>
+              <option value="100%">100%</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
           <Label htmlFor="textAlign">Text Align</Label>
           <select
             id="textAlign"
