@@ -593,14 +593,14 @@ export default function BlockPreview({
         )}
 
         {/* Empty state for blocks without content - only show when editing */}
-        {isEditable && !block.title && !block.content && (!block.children || block.children.length === 0) && (!block.ctaButtons || block.ctaButtons.length === 0) && (
+        {/* {isEditable && !block.title && !block.content && (!block.children || block.children.length === 0) && (!block.ctaButtons || block.ctaButtons.length === 0) && (
           <div 
             className="text-gray-400 italic text-sm cursor-text hover:bg-gray-50/50 rounded px-1 -mx-1 transition-colors focus:outline-none"
             onClick={handleContentEdit}
           >
             Click to edit this block
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );
