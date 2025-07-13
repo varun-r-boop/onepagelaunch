@@ -330,7 +330,7 @@ export function ProjectPageClient({ project, isOwner, projectId }: ProjectPageCl
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
       <div className="pt-20 pb-16">
         <div className="project-block-preview">
           <div className="container mx-auto px-4 py-8">
