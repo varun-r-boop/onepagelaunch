@@ -125,37 +125,30 @@ function CreatePageContent() {
             "blocks": [
               {
                 "id": "hero-1",
-                "type": "hero",
-                "data": {
-                  "title": "Welcome to my page",
-                  "subtitle": "I'm building something amazing. Stay tuned!",
-                  "primaryButton": {
-                    "text": "Get Started",
-                    "url": "#"
-                  },
-                  "secondaryButton": {
-                    "text": "Learn More",
-                    "url": "#"
-                  }
-                },
+                "type": "block",
+                "blockType": "hero",
+                "title": "🚀 Welcome to my page",
+                "content": "I'm building something amazing. Stay tuned!",
                 "style": {
-                  "backgroundColor": "#ffffff",
-                  "textColor": "#1f2937",
-                  "primaryButtonColor": "#3b82f6",
-                  "secondaryButtonColor": "#6b7280"
-                }
+                  "bgColor": "#f8fafc",
+                  "padding": "4rem",
+                  "textAlign": "center"
+                },
+                "ctaButtons": [
+                  {
+                    "id": "button-1",
+                    "text": "Get Started",
+                    "url": "#",
+                    "variant": "primary",
+                    "style": {
+                      "bgColor": "#3b82f6",
+                      "textColor": "#ffffff"
+                    }
+                  }
+                ]
               }
             ],
-            "globalStyles": {
-              "fontFamily": "Inter",
-              "primaryColor": "#3b82f6",
-              "backgroundColor": "#ffffff"
-            },
-            "metadata": {
-              "title": `${urlSlug}'s Page`,
-              "description": "Built with OnePageLaunch",
-              "favicon": "/favicon.svg"
-            },
+            "backgroundAnimation": "", // New field for background animations
             "slug": urlSlug
           };
 
