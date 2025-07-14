@@ -6,6 +6,7 @@ import Link from 'next/link';
 import BlockPreview from './block-editor/BlockPreview';
 import { toast } from 'sonner';
 import FloatingActionBar from './block-editor/FloatingActionBar';
+import { Textarea } from './ui/textarea';
 
 interface ProjectPageClientProps {
   project: BlockProjectData;
@@ -329,11 +330,64 @@ export function ProjectPageClient({ project, isOwner, projectId }: ProjectPageCl
     });
   };
 
+  // Get background animation styles
+  const getBackgroundStyles = () => {
+    const styles: React.CSSProperties = {};
+    
+    if (editedProject.backgroundAnimation) {
+      try {
+        // Parse the CSS and apply it to the background
+        const cssText = editedProject.backgroundAnimation;
+        
+        // Extract background-related properties
+        const backgroundMatch = cssText.match(/background:\s*([^;]+);/);
+        if (backgroundMatch) {
+          styles.background = backgroundMatch[1];
+        }
+        
+        const backgroundSizeMatch = cssText.match(/background-size:\s*([^;]+);/);
+        if (backgroundSizeMatch) {
+          styles.backgroundSize = backgroundSizeMatch[1];
+        }
+        
+        const animationMatch = cssText.match(/animation:\s*([^;]+);/);
+        if (animationMatch) {
+          styles.animation = animationMatch[1];
+        }
+      } catch (error) {
+        console.error('Error parsing background animation:', error);
+      }
+    }
+    
+    return styles;
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100" style={getBackgroundStyles()}>
+      {/* Inject custom keyframes if they exist */}
+      {editedProject.backgroundAnimation && (
+        <style dangerouslySetInnerHTML={{ __html: editedProject.backgroundAnimation }} />
+      )}
+      
       <div className="pt-20 pb-16">
         <div className="project-block-preview">
           <div className="container mx-auto px-4 py-8">
+            {/* Background Animation CSS - Only show for owners */}
+            {isOwner && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Background Animation CSS
+                </label>
+                <Textarea
+                  value={editedProject.backgroundAnimation || ''}
+                  onChange={(e) => setEditedProject(prev => ({ ...prev, backgroundAnimation: e.target.value }))}
+                  placeholder="Enter CSS for background animation (e.g., background: linear-gradient(...); animation: myAnimation 10s infinite;)"
+                  className="w-full text-sm font-mono"
+                  rows={3}
+                />
+              </div>
+            )}
+            
             {/* Project Title - Editable for owners, static for visitors */}
             {isOwner ? (
               <input
