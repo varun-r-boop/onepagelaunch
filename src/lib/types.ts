@@ -38,6 +38,7 @@ export interface BlockProjectData {
   slug?: string;
   projectName: string;
   blocks: Block[];
+  backgroundAnimation?: string; // Custom CSS animation for the page background
   createdAt?: Date;
   userId?: string;
   updatedAt?: Date;
