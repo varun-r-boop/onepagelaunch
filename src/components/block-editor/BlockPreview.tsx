@@ -365,7 +365,7 @@ export default function BlockPreview({
                       <button
                         key={color}
                         onClick={() => changeBackgroundColor(color)}
-                        className="w-6 h-6 rounded border border-gray-200 hover:scale-110 transition-transform"
+                        className="w-6 h-6 rounded border border-gray-200 hover:scale-110 transition-transform cursor-pointer"
                         style={{ backgroundColor: color }}
                         title={color}
                       />
@@ -397,7 +397,7 @@ export default function BlockPreview({
                   <div className="mt-2 flex gap-1">
                     <button
                       onClick={() => changeBorderColor('transparent')}
-                      className="w-6 h-6 rounded border border-gray-200 hover:scale-110 transition-transform bg-white flex items-center justify-center"
+                      className="w-6 h-6 rounded border border-gray-200 hover:scale-110 transition-transform bg-white flex items-center justify-center cursor-pointer"
                       title="No border"
                     >
                       <Minus className="h-3 w-3 text-gray-400" />
@@ -406,7 +406,7 @@ export default function BlockPreview({
                       <button
                         key={color}
                         onClick={() => changeBorderColor(color)}
-                        className="w-6 h-6 rounded border border-gray-200 hover:scale-110 transition-transform"
+                        className="w-6 h-6 rounded border border-gray-200 hover:scale-110 transition-transform cursor-pointer"
                         style={{ backgroundColor: color }}
                         title={color}
                       />
