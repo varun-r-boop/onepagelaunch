@@ -1,4 +1,5 @@
 import { ProjectData, ProjectFormData } from './types';
+import { getCachedProject } from './redis';
 
 // Client-side function to publish a project via API
 export const publishProject = async (formData: ProjectFormData): Promise<{ success: boolean; slug?: string; url?: string; error?: string }> => {
@@ -24,34 +25,26 @@ export const publishProject = async (formData: ProjectFormData): Promise<{ succe
   }
 };
 
-// Server-side function to get project from Redis
+// Server-side function to get project from Redis (updated to use new utility)
 export const getProjectFromKV = async (slug: string): Promise<ProjectData | null> => {
   try {
-    const { createClient } = await import('redis');
-    const redis = createClient({ 
-      url: process.env.REDIS_URL,
-      socket: {
-        connectTimeout: 10000 // 10 seconds
-      }
-    });
+    const projectData = await getCachedProject(slug);
     
-    await redis.connect();
+    if (!projectData) return null;
     
-    try {
-      const projectData = await redis.get(`project:${slug}`);
-      
-      if (!projectData) return null;
-      
-      const project = JSON.parse(projectData) as ProjectData;
-        
-      // Convert createdAt string back to Date object
-      return {
-        ...project,
-        createdAt: new Date(project.createdAt)
-      };
-    } finally {
-      await redis.disconnect();
-    }
+    // Convert BlockProjectData to ProjectData format if needed
+    // This maintains backward compatibility
+    return {
+      id: projectData.id || '',
+      slug: projectData.slug || '',
+      projectName: projectData.projectName,
+      tagline: '', // Default value for old format
+      features: [], // Default value for old format
+      ctaText: '', // Default value for old format
+      ctaUrl: '', // Default value for old format
+      createdAt: projectData.createdAt || new Date(),
+      userId: projectData.userId || ''
+    };
   } catch (error) {
     console.error('Failed to get project from Redis:', error);
     return null;
