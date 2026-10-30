@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
 import type { SupabaseProject } from '@/lib/types';
 import { createSiteFromTemplate } from '@/lib/site/templates';
+import { clearDraft, loadDraft } from '@/lib/site/draft-storage';
+import type { SiteData } from '@/lib/site/types';
 
 function CreatePageContent() {
   const router = useRouter();
@@ -120,8 +122,13 @@ function CreatePageContent() {
             // (don't redirect to existing projects when user specifically wants this slug)
           }
 
-          // New projects start from a template; the editor opens the template picker on first visit
-          const blankProjectData = createSiteFromTemplate('launch', `${urlSlug}'s Page`, urlSlug);
+          // A page built in the playground before signing up carries over (and goes
+          // live if the user clicked Publish). Otherwise start from a template and
+          // open the setup questions in the editor.
+          const draft = loadDraft();
+          const blankProjectData: SiteData = draft
+            ? { ...draft.site, slug: urlSlug, publishedSite: draft.publish ? { ...draft.site, slug: urlSlug } : null }
+            : { ...createSiteFromTemplate('launch', `${urlSlug}'s Page`, urlSlug), publishedSite: null };
 
           let response;
           let result;
@@ -155,7 +162,9 @@ function CreatePageContent() {
           }
           
           if (result.success) {
-            router.push(`/${urlSlug}?welcome=1`);
+            clearDraft();
+            if (draft?.publish) toast.success('🎉 Your page is live!');
+            router.push(draft ? `/${urlSlug}` : `/${urlSlug}?welcome=1`);
           } else if (response.status === 403 && result.existingProject) {
             // User already has a project, redirect to it without showing error
             router.push(`/${result.existingProject.slug}`);

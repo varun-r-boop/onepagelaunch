@@ -168,9 +168,12 @@ export default function Home() {
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
           Create a modern landing page for your SaaS in minutes. Pick a template, click to edit, and launch.
           </p>
-          <div className="mt-8">
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Link href="/templates/launch" className="inline-flex items-center rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-gray-800">
+              Start building: no sign-up needed →
+            </Link>
             <Link href="/templates" className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-900 shadow-sm hover:border-gray-400">
-              Browse templates →
+              Browse templates
             </Link>
           </div>
         </motion.section>

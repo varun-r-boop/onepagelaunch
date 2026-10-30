@@ -12,6 +12,10 @@ export const RenderModeContext = React.createContext<RenderMode>('view');
 export const useEditMode = () => React.useContext(RenderModeContext) === 'edit';
 export const useIsThumbnail = () => React.useContext(RenderModeContext) === 'thumbnail';
 
+// The page's address, so forms like the waitlist know which page they belong to.
+// Empty in the no-account playground.
+export const SiteSlugContext = React.createContext<string | undefined>(undefined);
+
 export function normalizeUrl(url: string): string {
   const trimmed = url.trim();
   if (!trimmed) return '#';

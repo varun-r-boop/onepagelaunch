@@ -82,6 +82,8 @@ export interface HeroSection {
   showSecondary: boolean;
   align: 'center' | 'left';
   imageUrl: string;
+  // Show an email sign-up form instead of the primary button
+  waitlist?: boolean;
 }
 
 export interface LogosSection {
@@ -128,6 +130,7 @@ export interface CtaSection {
   title: string;
   subtitle: string;
   button: SiteLink;
+  waitlist?: boolean;
 }
 
 export interface FooterSection {
@@ -158,6 +161,9 @@ export interface SiteData {
   template?: string;
   theme: SiteTheme;
   sections: Section[];
+  // What visitors see. Edits autosave to the draft above and go live on Publish.
+  // null = never published; undefined = page from before drafts existed (always live).
+  publishedSite?: SiteData | null;
 }
 
 export function isSiteData(data: unknown): data is SiteData {

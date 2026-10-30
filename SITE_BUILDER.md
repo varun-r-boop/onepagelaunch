@@ -4,16 +4,24 @@ New pages are built from **pre-designed sections styled by one theme**, inspired
 
 ## How it works for users
 
-1. Answer 3 quick questions in the setup wizard: product name, what it does (one line), and where the main button goes. The page is written from those answers, so there is no "Acme" placeholder to hunt down.
-2. Pick a look (Launch, Bento or Minimal), a brand color, and which sections to include, with a live preview of *their* page. Testimonials and customer logos are off by default so nobody publishes fake social proof.
-
-   The wizard opens automatically for new pages, and anyone can try it without an account at `/templates`. The **Templates** button reopens it later to restyle the page while keeping the name, headline and link.
-3. **Paste links to add content.** Paste any link (or several at once) into a grid's "Paste a link" box, into the wizard's "Your links" field, or anywhere on the page. Each one becomes the right kind of tile: a GitHub repo with stars, a playable YouTube/Loom/Vimeo video, a tweet as a quote, an App Store app with its rating, a Discord invite with member count, a booking link, or a website preview card. Social profiles (X, LinkedIn, Instagram, email…) also go into the footer.
-4. Click any text to edit it in place. Click a button or link to change its text and URL.
-5. Hover a section to move, duplicate or delete it, or to add a new section below it.
-6. Hover a bento tile to change its type (feature / stat / image / quote / link), size (1×1, 2×1, 1×2, 2×2), icon, accent color or order.
-7. Open **Design** to pick a theme preset, accent color, font and corner style.
-8. Changes auto-save. Preview on desktop or mobile, then **Copy link** to share it.
+1. **Start without an account.** "Start building" on the homepage opens the editor at `/templates/launch`. The draft is kept in the browser, so a refresh doesn't lose it.
+2. **Answer one short form:** product name, what it does (one line), and what the main button does (**collect emails** for a waitlist, or **open a link**), plus optional links. The page is written from these answers.
+3. **Edit and style in one place.** The editor opens with the **Design** panel beside the page:
+   - **Style** (Launch, Bento, Minimal) restyles instantly and keeps all your text.
+   - **Brand color**.
+   - **What's on your page**: switches for features, pricing, FAQ, testimonials and logos. Switching a section back on restores what you'd written, and nav links follow along.
+   - **Fine-tune**: theme, font and corners.
+4. **Edit in place:**
+   - Click any text to change it.
+   - Paste links to add tiles: a GitHub repo with stars, a playable video, an app with its rating, a tweet, a Discord invite, a website card. Social profiles also go into the footer.
+   - Hover sections and tiles for more options.
+5. **Publish** from the toolbar:
+   - Edits autosave as a private draft, and visitors only see what you've published.
+   - The button shows **Publish**, then **Live**, then **Publish changes** after further edits.
+   - In the playground, Publish asks for a page address, then sign-up. The draft carries over and goes live automatically.
+6. **Waitlist:**
+   - Pages set to "collect emails" show an email form in the hero and the closing call-to-action. You can switch either one with **Waitlist form** on the section toolbar.
+   - Sign-ups appear under **Waitlist** in the editor, with a CSV download.
 
 ## Code map
 
@@ -33,7 +41,14 @@ New pages are built from **pre-designed sections styled by one theme**, inspired
 | `src/components/site/sections.tsx` | The section components (one renderer for the editor and the live site) |
 | `src/components/site/editable.tsx` | `EditableText`, `EditableLink`, `EditableImage` and render mode |
 | `src/components/site/SiteEditor.tsx` | Editor shell: toolbar, section chrome, dialogs, Design panel |
-| `src/components/site/SiteProjectClient.tsx` | Loads a saved project, with auto-save for owners |
+| `src/components/site/SiteProjectClient.tsx` | Owner editor: draft auto-save, Publish |
+| `src/components/site/design-panel.tsx` | Style, brand color, section switches, fine-tune |
+| `src/lib/site/publish.ts` | Draft vs published helpers (`liveSiteOf`, `draftOf`) |
+| `src/lib/site/draft-storage.ts` | Playground draft in localStorage, carried through sign-up |
+| `src/components/site/waitlist-form.tsx` | The email form visitors fill in |
+| `src/components/site/waitlist-panel.tsx` | The owner's sign-up list and CSV export |
+| `src/app/api/waitlist/route.ts` | `POST` join a waitlist (public) · `GET` list sign-ups (owner) |
+| `supabase/migrations/…_waitlist_signups.sql` | Table and row-level security for sign-ups |
 
 Layouts use container queries (`@container`, `@3xl:`), so the editor's mobile preview frame shows the real mobile layout.
 
@@ -60,3 +75,29 @@ Projects are stored in the same `projects.data` JSON column. `isSiteData()` (dat
 If a fetch fails (blocked site, rate limit, offline), the tile is still built from the URL alone. Set `GITHUB_TOKEN` so repo tiles can show live stars beyond GitHub's 60 unauthenticated requests per hour.
 
 Known limitation: DNS is checked before the request rather than pinned for it, so a DNS-rebinding attack is theoretically possible. Pinning the resolved IP with a custom fetch agent would close that.
+
+## Publishing
+
+`projects.data` holds the draft. `data.publishedSite` holds what visitors see:
+
+- `null`: never published. Visitors get a "coming soon" page that isn't indexed.
+- A snapshot: the live version.
+- Missing: the page is from before drafts existed and counts as live. The first auto-save stores its published copy.
+
+The `[slug]` route only sends the published version to visitors' browsers. Owners see the editor, or add `?view=1` to see the live page.
+
+## Waitlist setup
+
+Run `supabase/migrations/20261030000000_waitlist_signups.sql` once in the Supabase SQL editor. It creates `waitlist_signups` with row-level security:
+
+- Anyone can add an email to an existing page.
+- Only the page's owner can read or delete sign-ups.
+
+The public endpoint also:
+- checks the page is live and has a waitlist form,
+- validates the email,
+- ignores bots that fill a hidden field,
+- rate-limits to 10 attempts per minute per IP,
+- treats a repeat email as success.
+
+Until the table exists, the Waitlist panel shows a setup message.

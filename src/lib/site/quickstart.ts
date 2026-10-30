@@ -7,6 +7,8 @@ export interface QuickStartInfo {
   name: string;
   headline: string;
   description: string;
+  // What the main button does: collect emails, or open a link
+  goal: 'waitlist' | 'link';
   link: string;
 }
 
@@ -46,7 +48,9 @@ export function normalizeLink(url: string): string {
 export function buildQuickStartSite(info: QuickStartInfo, choices: QuickStartChoices, base: Pick<SiteData, 'projectName' | 'slug'>): SiteData {
   const template = getTemplate(choices.templateId);
   const name = info.name.trim() || 'Acme';
-  const link = normalizeLink(info.link);
+  const waitlist = info.goal === 'waitlist';
+  // Waitlist pages send every button back up to the sign-up form
+  const link = waitlist ? '#' : normalizeLink(info.link);
 
   // Start from the template, drop excluded sections, add included ones it lacks
   let sections = template.build(name).filter(s => {
@@ -70,21 +74,26 @@ export function buildQuickStartSite(info: QuickStartInfo, choices: QuickStartCho
           .filter(t => NAV_LABELS[t])
           .sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b))
           .map(t => ({ id: `nav-${t}`, label: NAV_LABELS[t]!, url: `#${ANCHORS[t]}` }));
-        return { ...section, logo: name, links: section.links.length ? navLinks : [], cta: withUrl(section.cta, link) };
+        const cta = waitlist ? { ...section.cta, label: 'Join waitlist', url: '#' } : withUrl(section.cta, link);
+        return { ...section, logo: name, links: section.links.length ? navLinks : [], cta };
       }
       case 'hero':
         return {
           ...section,
           title: info.headline.trim() || section.title,
           subtitle: info.description.trim() || section.subtitle,
-          primary: withUrl(section.primary, link),
+          primary: waitlist ? { ...section.primary, label: 'Join the waitlist', url: '#' } : withUrl(section.primary, link),
           // One clear call to action; a second button can be switched on in the editor
           showSecondary: false,
+          waitlist,
+          badge: waitlist ? 'Coming soon' : section.badge,
         };
       case 'pricing':
         return { ...section, plans: section.plans.map(p => ({ ...p, cta: withUrl(p.cta, link) })) };
       case 'cta':
-        return { ...section, button: withUrl(section.button, link) };
+        return waitlist
+          ? { ...section, title: 'Be the first to know', subtitle: `Join the waitlist and get early access to ${name}.`, button: { ...section.button, label: 'Join the waitlist' }, waitlist }
+          : { ...section, button: withUrl(section.button, link) };
       default:
         return section;
     }
@@ -110,6 +119,53 @@ export function infoFromSite(site: SiteData): QuickStartInfo {
     name: nav?.type === 'navbar' ? nav.logo : fallbackName,
     headline: hero?.type === 'hero' ? hero.title : '',
     description: hero?.type === 'hero' ? hero.subtitle : '',
+    goal: hero?.type === 'hero' && hero.waitlist ? 'waitlist' : 'link',
     link: hero?.type === 'hero' && hero.primary.url !== '#' ? hero.primary.url : '',
   };
+}
+
+// Applies a template's look (colors, font, corners) without touching content
+export function applyStyle(site: SiteData, templateId: string): SiteData {
+  const template = getTemplate(templateId);
+  return { ...site, template: template.id, theme: { ...template.theme } };
+}
+
+function brandOf(site: SiteData): string {
+  const nav = site.sections.find(s => s.type === 'navbar');
+  return nav?.type === 'navbar' ? nav.logo : site.projectName;
+}
+
+// Switches an optional section on or off. `restore` brings back a section the
+// user removed earlier, edits included. Nav links follow the sections.
+export function setSectionEnabled(site: SiteData, type: SectionType, on: boolean, restore?: Section): SiteData {
+  let sections = site.sections;
+  const anchor = ANCHORS[type];
+  if (on) {
+    if (sections.some(s => s.type === type)) return site;
+    const created = restore ?? createSection(type, brandOf(site));
+    const section = { ...created, id: anchor ?? created.id } as Section;
+    const at = sections.findIndex(s => ORDER.indexOf(s.type) > ORDER.indexOf(type));
+    sections = at === -1 ? [...sections, section] : [...sections.slice(0, at), section, ...sections.slice(at)];
+  } else {
+    sections = sections.filter(s => s.type !== type);
+  }
+
+  // Keep the nav in sync (only on navbars that show section links)
+  const label = NAV_LABELS[type];
+  if (anchor && label) {
+    sections = sections.map(s => {
+      if (s.type !== 'navbar' || s.links.length === 0 && on) return s;
+      const others = s.links.filter(l => l.url !== `#${anchor}`);
+      if (!on) return { ...s, links: others };
+      const links = [...others, { id: `nav-${type}`, label, url: `#${anchor}` }].sort((a, b) => {
+        const rank = (url: string) => {
+          const t = (Object.keys(ANCHORS) as SectionType[]).find(k => `#${ANCHORS[k]}` === url);
+          return t ? ORDER.indexOf(t) : 99;
+        };
+        return rank(a.url) - rank(b.url);
+      });
+      return { ...s, links };
+    });
+  }
+  return { ...site, sections };
 }

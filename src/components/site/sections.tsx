@@ -14,6 +14,7 @@ import {
   AddItemButton, EditableImage, EditableLink, EditableText, RemoveItemButton, normalizeUrl, removeAt, replaceAt, useEditMode, useIsThumbnail,
 } from './editable';
 import { LinkPasteBox } from './link-paste-box';
+import { WaitlistForm } from './waitlist-form';
 import { TileControls } from './tile-controls';
 
 interface SectionProps<T extends Section> {
@@ -133,6 +134,15 @@ function HeroView({ section, onChange }: SectionProps<HeroSection>) {
           onChange={subtitle => onChange({ ...section, subtitle })}
           className={cn('mt-6 text-lg text-[var(--site-muted)] @3xl:text-xl', centered ? 'mx-auto max-w-2xl' : 'max-w-2xl')}
         />
+        {section.waitlist ? (
+          <div className={cn('mt-10 flex', centered ? 'justify-center' : 'justify-start')}>
+            <WaitlistForm
+              center={centered}
+              buttonLabel={section.primary.label}
+              onButtonLabelChange={label => onChange({ ...section, primary: { ...section.primary, label } })}
+            />
+          </div>
+        ) : (
         <div className={cn('mt-10 flex flex-wrap gap-3', centered ? 'justify-center' : 'justify-start')}>
           <EditableLink link={section.primary} onChange={primary => onChange({ ...section, primary })} className={primaryButton} />
           {section.showSecondary && (
@@ -144,6 +154,7 @@ function HeroView({ section, onChange }: SectionProps<HeroSection>) {
             />
           )}
         </div>
+        )}
         {(section.imageUrl || editable) && (
           <div className="relative mt-16 @3xl:mt-20">
             <div className={cn(card, 'overflow-hidden p-2 shadow-2xl')}>
@@ -563,11 +574,20 @@ function CtaView({ section, onChange }: SectionProps<CtaSection>) {
           <EditableText as="h2" value={section.title} onChange={title => onChange({ ...section, title })} className="relative text-3xl font-bold tracking-tight @3xl:text-5xl" />
           <EditableText as="p" value={section.subtitle} onChange={subtitle => onChange({ ...section, subtitle })} className="relative mx-auto mt-4 max-w-xl text-lg opacity-85" />
           <div className="relative mt-8 flex justify-center">
-            <EditableLink
-              link={section.button}
-              onChange={button => onChange({ ...section, button })}
-              className="inline-flex items-center justify-center rounded-[var(--site-radius)] bg-[var(--site-accent-fg)] px-6 py-3 text-sm font-semibold text-[var(--site-accent)] shadow-sm transition hover:opacity-90"
-            />
+            {section.waitlist ? (
+              <WaitlistForm
+                center
+                tone="accent"
+                buttonLabel={section.button.label}
+                onButtonLabelChange={label => onChange({ ...section, button: { ...section.button, label } })}
+              />
+            ) : (
+              <EditableLink
+                link={section.button}
+                onChange={button => onChange({ ...section, button })}
+                className="inline-flex items-center justify-center rounded-[var(--site-radius)] bg-[var(--site-accent-fg)] px-6 py-3 text-sm font-semibold text-[var(--site-accent)] shadow-sm transition hover:opacity-90"
+              />
+            )}
           </div>
         </div>
       </div>

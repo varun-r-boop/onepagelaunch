@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { googleFontsHref, themeToCssVars } from '@/lib/site/themes';
 import type { Section, SiteData, SiteTheme } from '@/lib/site/types';
-import { RenderModeContext, type RenderMode } from './editable';
+import { RenderModeContext, SiteSlugContext, type RenderMode } from './editable';
 import { SectionView } from './sections';
 
 export function SiteFonts() {
@@ -38,6 +38,7 @@ export default function SiteRenderer({ site, editable = false, thumbnail = false
   const mode: RenderMode = editable ? 'edit' : thumbnail ? 'thumbnail' : 'view';
   return (
     <RenderModeContext.Provider value={mode}>
+      <SiteSlugContext.Provider value={site.slug}>
       <SiteFonts />
       <ThemeFrame theme={site.theme} className={cn('min-h-full', className)}>
         {site.sections.map((section, index) => {
@@ -57,6 +58,7 @@ export default function SiteRenderer({ site, editable = false, thumbnail = false
           </Link>
         )}
       </ThemeFrame>
+      </SiteSlugContext.Provider>
     </RenderModeContext.Provider>
   );
 }

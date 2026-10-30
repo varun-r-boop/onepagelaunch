@@ -4,18 +4,20 @@ import * as React from 'react';
 import Link from 'next/link';
 import {
   AlignCenter, AlignLeft, Link2, ArrowDown, ArrowUp, Check, Copy, ExternalLink, Eye, EyeOff, LayoutTemplate,
-  Monitor, Paintbrush, Plus, Redo2, Smartphone, Trash2, Undo2, X, MousePointerClick,
+  Loader2, Mail, Monitor, Paintbrush, Plus, Redo2, Rocket, Smartphone, Trash2, Undo2, X, MousePointerClick,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { ACCENT_SWATCHES, THEME_FONTS, THEME_PRESETS, THEME_RADII, readableOn } from '@/lib/site/themes';
+import { THEME_PRESETS } from '@/lib/site/themes';
 import { SECTION_CATALOG, cloneWithNewIds, createSection, sectionLabel } from '@/lib/site/sections';
-import { DEFAULT_INCLUDE, OPTIONAL_SECTIONS, infoFromSite } from '@/lib/site/quickstart';
-import type { HeroSection, Section, SectionType, SiteData, SiteTheme, ThemeFont, ThemePreset, ThemeRadius } from '@/lib/site/types';
+import { hasWaitlist } from '@/lib/site/publish';
+import type { CtaSection, HeroSection, Section, SectionType, SiteData, SiteTheme } from '@/lib/site/types';
 import SiteRenderer, { SiteFonts, ThemeFrame } from './SiteRenderer';
 import { RenderModeContext } from './editable';
 import { SectionView } from './sections';
 import QuickStartWizard from './QuickStartWizard';
+import DesignPanel from './design-panel';
+import WaitlistPanel, { useWaitlist } from './waitlist-panel';
 import { SiteActionsContext, type SiteActions } from './link-paste-box';
 import { resolveLinks } from '@/lib/links/client';
 import { extractUrls } from '@/lib/links/detect';
@@ -31,11 +33,22 @@ interface SiteEditorProps {
   canUndo: boolean;
   canRedo: boolean;
   saveStatus: SaveStatus;
-  liveUrl?: string;
+  // Draft/live state for saved pages. Without it (the playground), `primaryAction` is shown instead.
+  publish?: PublishControls;
+  // Enables the waitlist panel for saved pages
+  projectId?: string;
   backHref?: string;
-  // Rendered at the right end of the toolbar, e.g. a "Sign up to publish" button
+  // Rendered at the right end of the toolbar, e.g. a "Publish" button in the playground
   primaryAction?: React.ReactNode;
-  openTemplatesOnLoad?: boolean;
+  openSetupOnLoad?: boolean;
+}
+
+export interface PublishControls {
+  // never = not live yet; changes = live, with unpublished edits; live = up to date
+  state: 'never' | 'changes' | 'live';
+  busy: boolean;
+  onPublish: () => void;
+  liveUrl: string;
 }
 
 // ---------- Small building blocks ----------
@@ -144,96 +157,6 @@ function AddSectionDialog({ theme, brand, onPick, onClose }: { theme: SiteTheme;
   );
 }
 
-function DesignPanel({ theme, onChange, onClose }: { theme: SiteTheme; onChange: (theme: SiteTheme) => void; onClose: () => void }) {
-  return (
-    <aside className="fixed right-0 top-14 bottom-0 z-40 w-80 overflow-y-auto border-l border-gray-200 bg-white p-5 shadow-xl">
-      <div className="mb-5 flex items-center justify-between">
-        <h2 className="font-semibold text-gray-900">Design</h2>
-        <button type="button" onClick={onClose} className="rounded-lg p-1 text-gray-500 hover:bg-gray-100 cursor-pointer" aria-label="Close design panel">
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Theme</h3>
-      <div className="mb-6 grid grid-cols-3 gap-2">
-        {(Object.keys(THEME_PRESETS) as ThemePreset[]).map(key => {
-          const p = THEME_PRESETS[key];
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => onChange({ ...theme, preset: key, accent: p.defaultAccent })}
-              className={cn('overflow-hidden rounded-lg border-2 text-left cursor-pointer', theme.preset === key ? 'border-gray-900' : 'border-gray-200 hover:border-gray-400')}
-            >
-              <div className="flex h-12 items-end gap-1 p-2" style={{ background: p.bg }}>
-                <span className="h-5 w-3 rounded-sm" style={{ background: p.card, border: `1px solid ${p.border}` }} />
-                <span className="h-3 w-6 rounded-sm" style={{ background: p.fg }} />
-                <span className="h-3 w-3 rounded-full" style={{ background: p.defaultAccent }} />
-              </div>
-              <p className="px-2 py-1 text-xs font-medium text-gray-700">{p.label}</p>
-            </button>
-          );
-        })}
-      </div>
-
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Accent color</h3>
-      <div className="mb-6 flex flex-wrap gap-2">
-        {ACCENT_SWATCHES.map(color => (
-          <button
-            key={color}
-            type="button"
-            title={color}
-            onClick={() => onChange({ ...theme, accent: color })}
-            className={cn('flex h-8 w-8 items-center justify-center rounded-full border border-black/10 cursor-pointer', theme.accent === color && 'ring-2 ring-gray-900 ring-offset-2')}
-            style={{ background: color }}
-          >
-            {theme.accent === color && <Check className="h-4 w-4" style={{ color: readableOn(color) }} />}
-          </button>
-        ))}
-        <label className="relative flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-dashed border-gray-400 text-gray-500" title="Custom color">
-          <Plus className="h-4 w-4" />
-          <input
-            type="color"
-            value={theme.accent}
-            onChange={e => onChange({ ...theme, accent: e.target.value })}
-            className="absolute inset-0 cursor-pointer opacity-0"
-          />
-        </label>
-      </div>
-
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Font</h3>
-      <div className="mb-6 grid grid-cols-2 gap-2">
-        {(Object.keys(THEME_FONTS) as ThemeFont[]).map(key => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => onChange({ ...theme, font: key })}
-            className={cn('rounded-lg border-2 px-3 py-2 text-left cursor-pointer', theme.font === key ? 'border-gray-900' : 'border-gray-200 hover:border-gray-400')}
-          >
-            <span className="block text-xl text-gray-900" style={{ fontFamily: THEME_FONTS[key].family }}>Aa</span>
-            <span className="text-xs text-gray-500">{THEME_FONTS[key].label}</span>
-          </button>
-        ))}
-      </div>
-
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Corners</h3>
-      <div className="grid grid-cols-3 gap-2">
-        {(Object.keys(THEME_RADII) as ThemeRadius[]).map(key => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => onChange({ ...theme, radius: key })}
-            className={cn('flex flex-col items-center gap-2 rounded-lg border-2 py-3 cursor-pointer', theme.radius === key ? 'border-gray-900' : 'border-gray-200 hover:border-gray-400')}
-          >
-            <span className="h-6 w-10 border-2 border-gray-700" style={{ borderRadius: THEME_RADII[key].value === '28px' ? '12px' : THEME_RADII[key].value === '14px' ? '6px' : '1px' }} />
-            <span className="text-xs text-gray-600">{THEME_RADII[key].label}</span>
-          </button>
-        ))}
-      </div>
-    </aside>
-  );
-}
-
 // ---------- Section chrome ----------
 
 function SectionChrome({ section, index, total, children, onMove, onDuplicate, onDelete, onInsert, onPatch }: {
@@ -270,15 +193,26 @@ function SectionChrome({ section, index, total, children, onMove, onDuplicate, o
             >
               {section.align === 'center' ? <AlignLeft className="h-4 w-4" /> : <AlignCenter className="h-4 w-4" />}
             </button>
-            <button
+            {!section.waitlist && <button
               type="button"
               className={cn(btn, 'w-auto px-2 text-xs font-medium')}
               title="Show or hide the second button"
               onClick={() => onPatch({ ...section, showSecondary: !section.showSecondary } as HeroSection)}
             >
               <MousePointerClick className="mr-1 h-3.5 w-3.5" /> {section.showSecondary ? '1 button' : '2 buttons'}
-            </button>
+            </button>}
           </>
+        )}
+        {(section.type === 'hero' || section.type === 'cta') && (
+          <button
+            type="button"
+            className={cn(btn, 'w-auto px-2 text-xs font-medium', section.waitlist && 'bg-gray-900 text-white hover:bg-gray-800 hover:text-white')}
+            title={section.waitlist ? 'Use a button instead' : 'Collect emails with a waitlist form'}
+            aria-pressed={!!section.waitlist}
+            onClick={() => onPatch({ ...section, waitlist: !section.waitlist } as HeroSection | CtaSection)}
+          >
+            <Mail className="mr-1 h-3.5 w-3.5" /> Waitlist form
+          </button>
         )}
         <span className="mx-0.5 h-5 w-px bg-gray-200" />
         <button type="button" className={btn} title="Move up" disabled={index === 0} onClick={() => onMove(-1)}>
@@ -321,14 +255,16 @@ const STATUS_LABEL: Record<SaveStatus, string> = {
 // ---------- Editor ----------
 
 export default function SiteEditor({
-  site, onChange, onUndo, onRedo, canUndo, canRedo, saveStatus, liveUrl, backHref = '/dashboard', primaryAction, openTemplatesOnLoad,
+  site, onChange, onUndo, onRedo, canUndo, canRedo, saveStatus, publish, projectId, backHref = '/dashboard', primaryAction, openSetupOnLoad,
 }: SiteEditorProps) {
   const [device, setDevice] = React.useState<'desktop' | 'mobile'>('desktop');
   const [preview, setPreview] = React.useState(false);
-  const [designOpen, setDesignOpen] = React.useState(false);
+  const [panel, setPanel] = React.useState<'design' | 'waitlist' | null>(null);
   const [insertAt, setInsertAt] = React.useState<number | null>(null);
-  // 'setup' = first-run wizard; 'restyle' = switch template keeping the user's key text
-  const [wizard, setWizard] = React.useState<'setup' | 'restyle' | null>(openTemplatesOnLoad ? 'setup' : null);
+  const [wizard, setWizard] = React.useState(!!openSetupOnLoad);
+  const removedSections = React.useRef(new Map<SectionType, Section>());
+  const waitlist = useWaitlist(projectId);
+  const pageHasWaitlist = hasWaitlist(site);
 
   const brand = (site.sections.find(s => s.type === 'navbar') as { logo?: string } | undefined)?.logo
     || site.projectName.replace(/'s Page$/i, '');
@@ -350,20 +286,17 @@ export default function SiteEditor({
   };
 
   const wizardInfo = React.useMemo(
-    () => (wizard === 'setup' ? { name: brand === 'Acme' ? '' : brand, headline: '', description: '', link: '' } : infoFromSite(site)),
+    () => ({ name: brand === 'Acme' ? '' : brand, headline: '', description: '', goal: 'link' as const, link: '' }),
     // Only recompute when the wizard opens
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [wizard],
   );
-  const wizardChoices = React.useMemo(() => {
-    const present = site.sections.map(s => s.type).filter(t => OPTIONAL_SECTIONS.some(o => o.type === t));
-    return {
-      templateId: site.template ?? 'launch',
-      accent: site.theme.accent,
-      include: wizard === 'setup' ? DEFAULT_INCLUDE : present,
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wizard]);
+
+  const startOver = () => {
+    if (!window.confirm('Start over? Your page will be rebuilt from new answers. You can undo with Ctrl/Cmd+Z.')) return;
+    setPanel(null);
+    setWizard(true);
+  };
 
   const editing = !preview;
 
@@ -431,16 +364,21 @@ export default function SiteEditor({
           <ToolbarButton title="Redo" disabled={!canRedo} onClick={onRedo} className="hidden px-2 sm:inline-flex">
             <Redo2 className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton onClick={() => setWizard('restyle')} title="Templates">
-            <LayoutTemplate className="h-4 w-4" /> <span className="hidden lg:inline">Templates</span>
-          </ToolbarButton>
-          <ToolbarButton active={designOpen} onClick={() => setDesignOpen(o => !o)} title="Colors and fonts">
+          <ToolbarButton active={panel === 'design'} onClick={() => setPanel(p => (p === 'design' ? null : 'design'))} title="Style, colors and sections">
             <Paintbrush className="h-4 w-4" /> <span className="hidden lg:inline">Design</span>
           </ToolbarButton>
+          {projectId && (pageHasWaitlist || !!waitlist.signups?.length) && (
+            <ToolbarButton active={panel === 'waitlist'} onClick={() => setPanel(p => (p === 'waitlist' ? null : 'waitlist'))} title="Waitlist sign-ups">
+              <Mail className="h-4 w-4" /> <span className="hidden lg:inline">Waitlist</span>
+              {!!waitlist.signups?.length && (
+                <span className={cn('rounded-full px-1.5 text-xs font-semibold', panel === 'waitlist' ? 'bg-white text-gray-900' : 'bg-gray-900 text-white')}>{waitlist.signups.length}</span>
+              )}
+            </ToolbarButton>
+          )}
           <ToolbarButton active={preview} onClick={() => setPreview(p => !p)} title="Preview">
             {preview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />} <span className="hidden lg:inline">{preview ? 'Exit preview' : 'Preview'}</span>
           </ToolbarButton>
-          {liveUrl && site.slug && (
+          {publish && publish.state !== 'never' && site.slug && (
             <ToolbarButton
               title="Copy your page link"
               onClick={async () => {
@@ -455,17 +393,34 @@ export default function SiteEditor({
               <Link2 className="h-4 w-4" /> <span className="hidden lg:inline">Copy link</span>
             </ToolbarButton>
           )}
-          {liveUrl && (
-            <a href={liveUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-2 rounded-lg bg-gray-900 px-3 text-sm font-medium text-white hover:bg-gray-800">
-              <ExternalLink className="h-4 w-4" /> <span className="hidden sm:inline">View live</span>
+          {publish && publish.state !== 'never' && (
+            <a href={publish.liveUrl} target="_blank" rel="noopener noreferrer" title="Open your live page" className="hidden h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium text-gray-700 hover:bg-gray-100 md:inline-flex">
+              <ExternalLink className="h-4 w-4" /> <span className="hidden xl:inline">View live</span>
             </a>
+          )}
+          {publish && (
+            publish.state === 'live' ? (
+              <span className="inline-flex h-9 items-center gap-2 rounded-lg bg-green-50 px-3 text-sm font-semibold text-green-700" title="Visitors see the latest version">
+                <Check className="h-4 w-4" /> Live
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={publish.onPublish}
+                disabled={publish.busy}
+                className="inline-flex h-9 items-center gap-2 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-60 cursor-pointer"
+              >
+                {publish.busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
+                {publish.state === 'never' ? 'Publish' : 'Publish changes'}
+              </button>
+            )
           )}
           {primaryAction}
         </div>
       </div>
 
       {/* Canvas */}
-      <div className={cn('pt-14 transition-[padding]', designOpen && 'lg:pr-80')}>
+      <div className={cn('pt-14 transition-[padding]', panel && 'sm:pr-80')}>
         <div className={cn('mx-auto py-6', device === 'mobile' ? 'w-[390px]' : 'w-full px-3 sm:px-6')}>
           {editing && site.sections.length > 0 && (
             <p className="mb-3 text-center text-xs text-gray-500">
@@ -478,7 +433,7 @@ export default function SiteEditor({
                 <p className="text-lg font-semibold text-gray-900">Your page is empty</p>
                 <div className="flex gap-2">
                   <ToolbarButton active onClick={() => setInsertAt(0)}><Plus className="h-4 w-4" /> Add a section</ToolbarButton>
-                  <ToolbarButton onClick={() => setWizard('restyle')}><LayoutTemplate className="h-4 w-4" /> Use a template</ToolbarButton>
+                  <ToolbarButton onClick={() => setWizard(true)}><LayoutTemplate className="h-4 w-4" /> Set up with a few answers</ToolbarButton>
                 </div>
               </div>
             ) : (
@@ -516,20 +471,26 @@ export default function SiteEditor({
       </div>
 
       <SiteFonts />
-      {designOpen && <DesignPanel theme={site.theme} onChange={theme => onChange(prev => ({ ...prev, theme }))} onClose={() => setDesignOpen(false)} />}
+      {panel === 'design' && (
+        <DesignPanel site={site} onChange={onChange} onClose={() => setPanel(null)} onStartOver={startOver} removed={removedSections} />
+      )}
+      {panel === 'waitlist' && (
+        <WaitlistPanel data={waitlist} projectName={site.projectName} hasForm={pageHasWaitlist} onClose={() => setPanel(null)} />
+      )}
       {insertAt !== null && <AddSectionDialog theme={site.theme} brand={brand} onPick={insertSection} onClose={() => setInsertAt(null)} />}
       {wizard && (
         <QuickStartWizard
           initialInfo={wizardInfo}
-          initialChoices={wizardChoices}
+          templateId={site.template ?? 'launch'}
           base={{ projectName: site.projectName, slug: site.slug }}
-          startAtStyle={wizard === 'restyle'}
-          carryFrom={wizard === 'restyle' ? site : undefined}
           onFinish={next => {
             onChange(prev => ({ ...prev, projectName: next.projectName, template: next.template, theme: next.theme, sections: next.sections }));
-            setWizard(null);
+            removedSections.current.clear();
+            setWizard(false);
+            // Straight into editing, with style, color and sections at hand
+            setPanel('design');
           }}
-          onClose={() => setWizard(null)}
+          onClose={() => setWizard(false)}
         />
       )}
     </div>
