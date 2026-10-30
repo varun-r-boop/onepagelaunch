@@ -21,6 +21,7 @@ export default function TemplatePlayground({ templateId }: { templateId: string 
       canRedo={canRedo}
       saveStatus="local"
       backHref="/templates"
+      openTemplatesOnLoad
       primaryAction={
         <Link href="/#get-started" className="inline-flex h-9 items-center rounded-lg bg-indigo-600 px-3 text-sm font-semibold text-white hover:bg-indigo-700">
           Publish yours — free

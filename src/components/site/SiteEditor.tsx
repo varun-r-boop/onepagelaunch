@@ -3,17 +3,19 @@
 import * as React from 'react';
 import Link from 'next/link';
 import {
-  AlignCenter, AlignLeft, ArrowDown, ArrowUp, Check, Copy, ExternalLink, Eye, EyeOff, LayoutTemplate,
+  AlignCenter, AlignLeft, Link2, ArrowDown, ArrowUp, Check, Copy, ExternalLink, Eye, EyeOff, LayoutTemplate,
   Monitor, Paintbrush, Plus, Redo2, Smartphone, Trash2, Undo2, X, MousePointerClick,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ACCENT_SWATCHES, THEME_FONTS, THEME_PRESETS, THEME_RADII, readableOn } from '@/lib/site/themes';
 import { SECTION_CATALOG, cloneWithNewIds, createSection, sectionLabel } from '@/lib/site/sections';
-import { SITE_TEMPLATES, createSiteFromTemplate } from '@/lib/site/templates';
+import { DEFAULT_INCLUDE, OPTIONAL_SECTIONS, infoFromSite } from '@/lib/site/quickstart';
 import type { HeroSection, Section, SectionType, SiteData, SiteTheme, ThemeFont, ThemePreset, ThemeRadius } from '@/lib/site/types';
 import SiteRenderer, { SiteFonts, ThemeFrame } from './SiteRenderer';
 import { RenderModeContext } from './editable';
 import { SectionView } from './sections';
+import QuickStartWizard from './QuickStartWizard';
 
 export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error' | 'local';
 
@@ -130,48 +132,6 @@ function AddSectionDialog({ theme, brand, onPick, onClose }: { theme: SiteTheme;
             <div className="p-3">
               <p className="text-sm font-semibold text-gray-900">{item.label}</p>
               <p className="text-xs text-gray-500">{item.description}</p>
-            </div>
-          </PickCard>
-        ))}
-      </div>
-    </Modal>
-  );
-}
-
-function TemplatesDialog({ brand, currentTemplate, onPick, onClose, welcome }: {
-  brand: string;
-  currentTemplate?: string;
-  onPick: (id: string) => void;
-  onClose: () => void;
-  welcome?: boolean;
-}) {
-  const sites = React.useMemo(() => SITE_TEMPLATES.map(t => createSiteFromTemplate(t.id, brand)), [brand]);
-  return (
-    <Modal
-      title={welcome ? 'Pick a starting point' : 'Templates'}
-      subtitle={welcome ? 'Choose a look. You can change the text, colors and sections anytime.' : 'Switching templates replaces the content on your page.'}
-      onClose={onClose}
-      wide
-    >
-      <div className="grid gap-5 md:grid-cols-3">
-        {SITE_TEMPLATES.map((template, i) => (
-          <PickCard
-            key={template.id}
-            onPick={() => onPick(template.id)}
-            className={cn(
-              'group overflow-hidden rounded-xl border-2 text-left transition hover:shadow-xl',
-              currentTemplate === template.id ? 'border-gray-900' : 'border-gray-200 hover:border-gray-400',
-            )}
-          >
-            <div style={{ background: THEME_PRESETS[template.theme.preset].bg }}>
-              <ScaledPreview theme={template.theme} sections={sites[i].sections} height={260} scale={0.235} />
-            </div>
-            <div className="border-t border-gray-100 p-4">
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-gray-900">{template.name}</p>
-                {currentTemplate === template.id && <span className="text-xs font-medium text-gray-500">Current</span>}
-              </div>
-              <p className="mt-1 text-sm text-gray-500">{template.description}</p>
             </div>
           </PickCard>
         ))}
@@ -363,8 +323,8 @@ export default function SiteEditor({
   const [preview, setPreview] = React.useState(false);
   const [designOpen, setDesignOpen] = React.useState(false);
   const [insertAt, setInsertAt] = React.useState<number | null>(null);
-  const [templatesOpen, setTemplatesOpen] = React.useState(!!openTemplatesOnLoad);
-  const [welcome, setWelcome] = React.useState(!!openTemplatesOnLoad);
+  // 'setup' = first-run wizard; 'restyle' = switch template keeping the user's key text
+  const [wizard, setWizard] = React.useState<'setup' | 'restyle' | null>(openTemplatesOnLoad ? 'setup' : null);
 
   const brand = (site.sections.find(s => s.type === 'navbar') as { logo?: string } | undefined)?.logo
     || site.projectName.replace(/'s Page$/i, '');
@@ -385,13 +345,21 @@ export default function SiteEditor({
     setInsertAt(null);
   };
 
-  const applyTemplate = (id: string) => {
-    if (!welcome && site.sections.length > 0 && !window.confirm('Replace your current page with this template? You can undo with Ctrl/Cmd+Z.')) return;
-    const fresh = createSiteFromTemplate(id, site.projectName, site.slug);
-    onChange(prev => ({ ...prev, template: fresh.template, theme: fresh.theme, sections: fresh.sections }));
-    setTemplatesOpen(false);
-    setWelcome(false);
-  };
+  const wizardInfo = React.useMemo(
+    () => (wizard === 'setup' ? { name: brand === 'Acme' ? '' : brand, headline: '', description: '', link: '' } : infoFromSite(site)),
+    // Only recompute when the wizard opens
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [wizard],
+  );
+  const wizardChoices = React.useMemo(() => {
+    const present = site.sections.map(s => s.type).filter(t => OPTIONAL_SECTIONS.some(o => o.type === t));
+    return {
+      templateId: site.template ?? 'launch',
+      accent: site.theme.accent,
+      include: wizard === 'setup' ? DEFAULT_INCLUDE : present,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wizard]);
 
   const editing = !preview;
 
@@ -425,7 +393,7 @@ export default function SiteEditor({
           <ToolbarButton title="Redo" disabled={!canRedo} onClick={onRedo} className="hidden px-2 sm:inline-flex">
             <Redo2 className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton onClick={() => setTemplatesOpen(true)} title="Templates">
+          <ToolbarButton onClick={() => setWizard('restyle')} title="Templates">
             <LayoutTemplate className="h-4 w-4" /> <span className="hidden lg:inline">Templates</span>
           </ToolbarButton>
           <ToolbarButton active={designOpen} onClick={() => setDesignOpen(o => !o)} title="Colors and fonts">
@@ -434,6 +402,21 @@ export default function SiteEditor({
           <ToolbarButton active={preview} onClick={() => setPreview(p => !p)} title="Preview">
             {preview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />} <span className="hidden lg:inline">{preview ? 'Exit preview' : 'Preview'}</span>
           </ToolbarButton>
+          {liveUrl && site.slug && (
+            <ToolbarButton
+              title="Copy your page link"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(`${window.location.origin}/${site.slug}`);
+                  toast.success('Link copied. Share it anywhere!');
+                } catch {
+                  toast.error('Couldn’t copy the link');
+                }
+              }}
+            >
+              <Link2 className="h-4 w-4" /> <span className="hidden lg:inline">Copy link</span>
+            </ToolbarButton>
+          )}
           {liveUrl && (
             <a href={liveUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-2 rounded-lg bg-gray-900 px-3 text-sm font-medium text-white hover:bg-gray-800">
               <ExternalLink className="h-4 w-4" /> <span className="hidden sm:inline">View live</span>
@@ -457,7 +440,7 @@ export default function SiteEditor({
                 <p className="text-lg font-semibold text-gray-900">Your page is empty</p>
                 <div className="flex gap-2">
                   <ToolbarButton active onClick={() => setInsertAt(0)}><Plus className="h-4 w-4" /> Add a section</ToolbarButton>
-                  <ToolbarButton onClick={() => setTemplatesOpen(true)}><LayoutTemplate className="h-4 w-4" /> Use a template</ToolbarButton>
+                  <ToolbarButton onClick={() => setWizard('restyle')}><LayoutTemplate className="h-4 w-4" /> Use a template</ToolbarButton>
                 </div>
               </div>
             ) : (
@@ -495,13 +478,17 @@ export default function SiteEditor({
       <SiteFonts />
       {designOpen && <DesignPanel theme={site.theme} onChange={theme => onChange(prev => ({ ...prev, theme }))} onClose={() => setDesignOpen(false)} />}
       {insertAt !== null && <AddSectionDialog theme={site.theme} brand={brand} onPick={insertSection} onClose={() => setInsertAt(null)} />}
-      {templatesOpen && (
-        <TemplatesDialog
-          brand={brand}
-          welcome={welcome}
-          currentTemplate={welcome ? undefined : site.template}
-          onPick={applyTemplate}
-          onClose={() => { setTemplatesOpen(false); setWelcome(false); }}
+      {wizard && (
+        <QuickStartWizard
+          initialInfo={wizardInfo}
+          initialChoices={wizardChoices}
+          base={{ projectName: site.projectName, slug: site.slug }}
+          startAtStyle={wizard === 'restyle'}
+          onFinish={next => {
+            onChange(prev => ({ ...prev, projectName: next.projectName, template: next.template, theme: next.theme, sections: next.sections }));
+            setWizard(null);
+          }}
+          onClose={() => setWizard(null)}
         />
       )}
     </div>

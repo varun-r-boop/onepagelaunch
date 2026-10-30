@@ -4,12 +4,15 @@ New pages are built from **pre-designed sections styled by one theme**, inspired
 
 ## How it works for users
 
-1. Pick a template (Launch, Bento or Minimal). The picker opens automatically for new pages, and anyone can try them without an account at `/templates`.
-2. Click any text to edit it in place. Click a button or link to change its text and URL.
-3. Hover a section to move, duplicate or delete it, or to add a new section below it.
-4. Hover a bento tile to change its type (feature / stat / image / quote / link), size (1×1, 2×1, 1×2, 2×2), icon, accent color or order.
-5. Open **Design** to pick a theme preset, accent color, font and corner style.
-6. Changes auto-save. Preview on desktop or mobile, then use **View live**.
+1. Answer 3 quick questions in the setup wizard: product name, what it does (one line), and where the main button goes. The page is written from those answers, so there is no "Acme" placeholder to hunt down.
+2. Pick a look (Launch, Bento or Minimal), a brand color, and which sections to include, with a live preview of *their* page. Testimonials and customer logos are off by default so nobody publishes fake social proof.
+
+   The wizard opens automatically for new pages, and anyone can try it without an account at `/templates`. The **Templates** button reopens it later to restyle the page while keeping the name, headline and link.
+3. Click any text to edit it in place. Click a button or link to change its text and URL.
+4. Hover a section to move, duplicate or delete it, or to add a new section below it.
+5. Hover a bento tile to change its type (feature / stat / image / quote / link), size (1×1, 2×1, 1×2, 2×2), icon, accent color or order.
+6. Open **Design** to pick a theme preset, accent color, font and corner style.
+7. Changes auto-save. Preview on desktop or mobile, then **Copy link** to share it.
 
 ## Code map
 
@@ -19,6 +22,8 @@ New pages are built from **pre-designed sections styled by one theme**, inspired
 | `src/lib/site/themes.ts` | Theme presets → CSS variables (`--site-bg`, `--site-accent`, …) |
 | `src/lib/site/sections.ts` | Default content for each section type and the section catalog |
 | `src/lib/site/templates.ts` | Templates and `createSiteFromTemplate()` |
+| `src/lib/site/quickstart.ts` | Builds a personalized page from the wizard answers |
+| `src/components/site/QuickStartWizard.tsx` | The 2-step setup wizard with live preview |
 | `src/components/site/sections.tsx` | The section components (one renderer for the editor and the live site) |
 | `src/components/site/editable.tsx` | `EditableText`, `EditableLink`, `EditableImage` and render mode |
 | `src/components/site/SiteEditor.tsx` | Editor shell: toolbar, section chrome, dialogs, Design panel |
