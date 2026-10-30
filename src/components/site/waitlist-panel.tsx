@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Download, Loader2, RefreshCw, Users, X } from 'lucide-react';
+import { Download, Loader2, RefreshCw, Users } from 'lucide-react';
 
 export interface WaitlistSignup {
   email: string;
@@ -47,31 +47,20 @@ function downloadCsv(signups: WaitlistSignup[], name: string) {
   URL.revokeObjectURL(url);
 }
 
-export default function WaitlistPanel({ data, projectName, hasForm, onClose }: {
+export default function WaitlistPanel({ data, projectName, hasForm }: {
   data: ReturnType<typeof useWaitlist>;
   projectName: string;
   hasForm: boolean;
-  onClose: () => void;
 }) {
   const { signups, loading, error, refresh } = data;
   return (
-    <aside className="fixed right-0 top-14 bottom-0 z-40 flex w-full flex-col border-l border-gray-200 bg-white shadow-xl sm:w-80">
-      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-        <div>
-          <h2 className="font-semibold text-gray-900">Waitlist</h2>
-          <p className="text-xs text-gray-500">{signups ? `${signups.length} ${signups.length === 1 ? 'person' : 'people'} signed up` : 'People who joined from your page'}</p>
-        </div>
-        <div className="flex items-center gap-1">
-          <button type="button" onClick={() => void refresh()} className="rounded-lg p-1 text-gray-500 hover:bg-gray-100 cursor-pointer" aria-label="Refresh">
-            <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
-          </button>
-          <button type="button" onClick={onClose} className="rounded-lg p-1 text-gray-500 hover:bg-gray-100 cursor-pointer" aria-label="Close waitlist panel">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <div className="p-5 text-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-xs text-gray-500">{signups ? `${signups.length} ${signups.length === 1 ? 'person' : 'people'} signed up` : 'People who joined from your page'}</p>
+        <button type="button" onClick={() => void refresh()} className="rounded-lg p-1 text-gray-500 hover:bg-gray-100 cursor-pointer" aria-label="Refresh sign-ups">
+          <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
+        </button>
       </div>
-
-      <div className="flex-1 overflow-y-auto p-5 text-sm">
         {!hasForm && (
           <p className="mb-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
             Your page has no sign-up form. Hover the hero or call-to-action section and click <strong>Waitlist form</strong> to add one.
@@ -110,7 +99,6 @@ export default function WaitlistPanel({ data, projectName, hasForm, onClose }: {
             </ul>
           </>
         )}
-      </div>
-    </aside>
+    </div>
   );
 }

@@ -6,7 +6,12 @@ New pages are built from **pre-designed sections styled by one theme**, inspired
 
 1. **Start without an account.** "Start building" on the homepage opens the editor at `/templates/launch` (`/templates` redirects there). The draft is kept in the browser, so a refresh doesn't lose it.
 2. **Answer one short form:** product name, what it does (one line), and what the main button does (**collect emails** for a waitlist, or **open a link**), plus optional links. The page is written from these answers.
-3. **Edit and style in one place.** The editor opens with the **Design** panel beside the page:
+3. **Edit and style in one place.** The top bar only holds the page name, the save status and **Publish**. Everything else is in the sidebar on the right:
+   - **Tools:** Preview, desktop/mobile view, undo/redo, plus Copy link and View live once published.
+   - **Tabs:** Design, and Waitlist when the page collects emails.
+   - The top-bar panel button hides the sidebar for more room. It starts hidden on phone-sized screens.
+
+   The **Design** tab has:
    - **Primary color** (buttons and highlights) and **secondary color** (page background). Text, cards, borders and the hero glow are derived from these two. White + indigo is the default "Launch" look; midnight + lavender gives the dark "Bento" look.
    - **What's on your page**: switches for features, pricing, FAQ, testimonials and logos. Switching a section back on restores what you'd written, and nav links follow along.
    - **Fine-tune**: font and corners.
@@ -39,7 +44,7 @@ New pages are built from **pre-designed sections styled by one theme**, inspired
 | `src/components/site/link-paste-box.tsx` | The "Paste a link" tile in the editor |
 | `src/components/site/sections.tsx` | The section components (one renderer for the editor and the live site) |
 | `src/components/site/editable.tsx` | `EditableText`, `EditableLink`, `EditableImage` and render mode |
-| `src/components/site/SiteEditor.tsx` | Editor shell: toolbar, section chrome, dialogs, Design panel |
+| `src/components/site/SiteEditor.tsx` | Editor shell: top bar with Publish, the sidebar (tools + Design/Waitlist tabs), section chrome, dialogs |
 | `src/components/site/SiteProjectClient.tsx` | Owner editor: draft auto-save, Publish |
 | `src/components/site/design-panel.tsx` | Primary/secondary colors, section switches, fine-tune |
 | `src/lib/site/publish.ts` | Draft vs published helpers (`liveSiteOf`, `draftOf`) |

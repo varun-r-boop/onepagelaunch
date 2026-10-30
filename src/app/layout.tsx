@@ -16,8 +16,8 @@ export default function RootLayout({
     <html lang="en">
       <body className="font-sans antialiased">
         {children}
-        {/* Offset keeps toasts below the editor toolbar */}
-        <Toaster position="top-right" richColors offset={{ top: 64 }} />
+        {/* Bottom center stays clear of the editor's toolbar and sidebar */}
+        <Toaster position="bottom-center" richColors />
       </body>
     </html>
   );

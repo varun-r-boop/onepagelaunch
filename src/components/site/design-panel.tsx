@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Check, ChevronDown, Plus, RotateCcw, X } from 'lucide-react';
+import { Check, ChevronDown, Plus, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ACCENT_SWATCHES, BACKGROUND_SWATCHES, THEME_FONTS, THEME_RADII, readableOn, themeBackground } from '@/lib/site/themes';
 import { OPTIONAL_SECTIONS, setSectionEnabled } from '@/lib/site/quickstart';
@@ -37,14 +37,13 @@ function CustomColor({ value, label, onChange }: { value: string; label: string;
 interface DesignPanelProps {
   site: SiteData;
   onChange: (fn: (prev: SiteData) => SiteData) => void;
-  onClose: () => void;
   onStartOver: () => void;
   // Sections the user switched off, kept so switching back on restores their edits
   removed: React.MutableRefObject<Map<SectionType, Section>>;
 }
 
 // Everything about the page's look, applied live while the user edits
-export default function DesignPanel({ site, onChange, onClose, onStartOver, removed }: DesignPanelProps) {
+export default function DesignPanel({ site, onChange, onStartOver, removed }: DesignPanelProps) {
   const [fineTune, setFineTune] = React.useState(false);
   const theme = site.theme;
   const background = themeBackground(theme);
@@ -61,18 +60,7 @@ export default function DesignPanel({ site, onChange, onClose, onStartOver, remo
   };
 
   return (
-    <aside className="fixed right-0 top-14 bottom-0 z-40 flex w-full flex-col border-l border-gray-200 bg-white shadow-xl sm:w-80">
-      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-        <div>
-          <h2 className="font-semibold text-gray-900">Design</h2>
-          <p className="text-xs text-gray-500">Changes apply instantly.</p>
-        </div>
-        <button type="button" onClick={onClose} className="rounded-lg p-1 text-gray-500 hover:bg-gray-100 cursor-pointer" aria-label="Close design panel">
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-5">
+    <div className="p-5">
         <h3 className={heading}>Primary color</h3>
         <p className="-mt-1 mb-2 text-xs text-gray-500">Buttons, highlights and accents</p>
         <div className="mb-6 flex flex-wrap gap-2">
@@ -165,7 +153,6 @@ export default function DesignPanel({ site, onChange, onClose, onStartOver, remo
         >
           <RotateCcw className="h-3.5 w-3.5" /> Start over with new answers
         </button>
-      </div>
-    </aside>
+    </div>
   );
 }

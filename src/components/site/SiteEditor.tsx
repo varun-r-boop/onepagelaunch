@@ -4,7 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import {
   AlignCenter, AlignLeft, Link2, ArrowDown, ArrowUp, Check, Copy, ExternalLink, Eye, EyeOff, LayoutTemplate,
-  Loader2, Mail, Monitor, Paintbrush, Plus, Redo2, Rocket, Smartphone, Trash2, Undo2, X, MousePointerClick,
+  Loader2, Mail, Monitor, PanelRightClose, PanelRightOpen, Plus, Redo2, Rocket, Smartphone, Trash2, Undo2, X, MousePointerClick,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -259,7 +259,13 @@ export default function SiteEditor({
 }: SiteEditorProps) {
   const [device, setDevice] = React.useState<'desktop' | 'mobile'>('desktop');
   const [preview, setPreview] = React.useState(false);
-  const [panel, setPanel] = React.useState<'design' | 'waitlist' | null>(null);
+  // The sidebar holds the editing tools; it can be hidden for more canvas room
+  const [sidebarOpen, setSidebarOpen] = React.useState(true);
+  const [tab, setTab] = React.useState<'design' | 'waitlist'>('design');
+  // On small screens the sidebar covers the page, so start with it hidden
+  React.useEffect(() => {
+    if (window.matchMedia('(max-width: 1023px)').matches) setSidebarOpen(false);
+  }, []);
   const [insertAt, setInsertAt] = React.useState<number | null>(null);
   const [wizard, setWizard] = React.useState(!!openSetupOnLoad);
   const removedSections = React.useRef(new Map<SectionType, Section>());
@@ -294,7 +300,6 @@ export default function SiteEditor({
 
   const startOver = () => {
     if (!window.confirm('Start over? Your page will be rebuilt from new answers. You can undo with Ctrl/Cmd+Z.')) return;
-    setPanel(null);
     setWizard(true);
   };
 
@@ -336,7 +341,7 @@ export default function SiteEditor({
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Top bar */}
+      {/* Top bar: just the page, its save state and Publish. Tools live in the sidebar. */}
       <div className="fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between gap-2 border-b border-gray-200 bg-white px-3">
         <div className="flex min-w-0 items-center gap-2">
           <Link href={backHref} className="flex h-9 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-gray-900 hover:bg-gray-100">
@@ -348,56 +353,16 @@ export default function SiteEditor({
           </span>
         </div>
 
-        <div className="flex items-center gap-1 rounded-lg bg-gray-100 p-1">
-          <button type="button" title="Desktop" onClick={() => setDevice('desktop')} className={cn('rounded-md p-1.5 cursor-pointer', device === 'desktop' ? 'bg-white shadow-sm' : 'text-gray-500')}>
-            <Monitor className="h-4 w-4" />
-          </button>
-          <button type="button" title="Mobile" onClick={() => setDevice('mobile')} className={cn('rounded-md p-1.5 cursor-pointer', device === 'mobile' ? 'bg-white shadow-sm' : 'text-gray-500')}>
-            <Smartphone className="h-4 w-4" />
-          </button>
-        </div>
-
         <div className="flex items-center gap-1">
-          <ToolbarButton title="Undo (Ctrl/Cmd+Z)" disabled={!canUndo} onClick={onUndo} className="px-2">
-            <Undo2 className="h-4 w-4" />
+          <ToolbarButton
+            active={sidebarOpen}
+            onClick={() => setSidebarOpen(o => !o)}
+            title={sidebarOpen ? 'Hide editing panel' : 'Show editing panel'}
+            aria-label={sidebarOpen ? 'Hide editing panel' : 'Show editing panel'}
+            className="px-2"
+          >
+            {sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
           </ToolbarButton>
-          <ToolbarButton title="Redo" disabled={!canRedo} onClick={onRedo} className="hidden px-2 sm:inline-flex">
-            <Redo2 className="h-4 w-4" />
-          </ToolbarButton>
-          <ToolbarButton active={panel === 'design'} onClick={() => setPanel(p => (p === 'design' ? null : 'design'))} title="Style, colors and sections">
-            <Paintbrush className="h-4 w-4" /> <span className="hidden lg:inline">Design</span>
-          </ToolbarButton>
-          {projectId && (pageHasWaitlist || !!waitlist.signups?.length) && (
-            <ToolbarButton active={panel === 'waitlist'} onClick={() => setPanel(p => (p === 'waitlist' ? null : 'waitlist'))} title="Waitlist sign-ups">
-              <Mail className="h-4 w-4" /> <span className="hidden lg:inline">Waitlist</span>
-              {!!waitlist.signups?.length && (
-                <span className={cn('rounded-full px-1.5 text-xs font-semibold', panel === 'waitlist' ? 'bg-white text-gray-900' : 'bg-gray-900 text-white')}>{waitlist.signups.length}</span>
-              )}
-            </ToolbarButton>
-          )}
-          <ToolbarButton active={preview} onClick={() => setPreview(p => !p)} title="Preview">
-            {preview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />} <span className="hidden lg:inline">{preview ? 'Exit preview' : 'Preview'}</span>
-          </ToolbarButton>
-          {publish && publish.state !== 'never' && site.slug && (
-            <ToolbarButton
-              title="Copy your page link"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(`${window.location.origin}/${site.slug}`);
-                  toast.success('Link copied. Share it anywhere!');
-                } catch {
-                  toast.error('Couldn’t copy the link');
-                }
-              }}
-            >
-              <Link2 className="h-4 w-4" /> <span className="hidden lg:inline">Copy link</span>
-            </ToolbarButton>
-          )}
-          {publish && publish.state !== 'never' && (
-            <a href={publish.liveUrl} target="_blank" rel="noopener noreferrer" title="Open your live page" className="hidden h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium text-gray-700 hover:bg-gray-100 md:inline-flex">
-              <ExternalLink className="h-4 w-4" /> <span className="hidden xl:inline">View live</span>
-            </a>
-          )}
           {publish && (
             publish.state === 'live' ? (
               <span className="inline-flex h-9 items-center gap-2 rounded-lg bg-green-50 px-3 text-sm font-semibold text-green-700" title="Visitors see the latest version">
@@ -420,7 +385,7 @@ export default function SiteEditor({
       </div>
 
       {/* Canvas */}
-      <div className={cn('pt-14 transition-[padding]', panel && 'sm:pr-80')}>
+      <div className={cn('pt-14 transition-[padding]', sidebarOpen && 'lg:pr-80')}>
         <div className={cn('mx-auto py-6', device === 'mobile' ? 'w-[390px]' : 'w-full px-3 sm:px-6')}>
           {editing && site.sections.length > 0 && (
             <p className="mb-3 text-center text-xs text-gray-500">
@@ -471,11 +436,84 @@ export default function SiteEditor({
       </div>
 
       <SiteFonts />
-      {panel === 'design' && (
-        <DesignPanel site={site} onChange={onChange} onClose={() => setPanel(null)} onStartOver={startOver} removed={removedSections} />
-      )}
-      {panel === 'waitlist' && (
-        <WaitlistPanel data={waitlist} projectName={site.projectName} hasForm={pageHasWaitlist} onClose={() => setPanel(null)} />
+      {sidebarOpen && (
+        <aside className="fixed right-0 top-14 bottom-0 z-40 flex w-full flex-col border-l border-gray-200 bg-white shadow-xl sm:w-80 lg:shadow-none" aria-label="Editing panel">
+          {/* Tools */}
+          <div className="space-y-2 border-b border-gray-100 p-3">
+            <div className="flex items-center gap-2">
+              <ToolbarButton active={preview} onClick={() => setPreview(p => !p)} className="flex-1 justify-center ring-1 ring-gray-200" title="See the page as visitors will">
+                {preview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />} {preview ? 'Exit preview' : 'Preview'}
+              </ToolbarButton>
+              <div className="flex items-center gap-1 rounded-lg bg-gray-100 p-1" role="group" aria-label="Preview size">
+                <button type="button" title="Desktop" aria-label="Desktop" aria-pressed={device === 'desktop'} onClick={() => setDevice('desktop')} className={cn('rounded-md p-1.5 cursor-pointer', device === 'desktop' ? 'bg-white shadow-sm' : 'text-gray-500')}>
+                  <Monitor className="h-4 w-4" />
+                </button>
+                <button type="button" title="Mobile" aria-label="Mobile" aria-pressed={device === 'mobile'} onClick={() => setDevice('mobile')} className={cn('rounded-md p-1.5 cursor-pointer', device === 'mobile' ? 'bg-white shadow-sm' : 'text-gray-500')}>
+                  <Smartphone className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <ToolbarButton title="Undo (Ctrl/Cmd+Z)" aria-label="Undo" disabled={!canUndo} onClick={onUndo} className="px-2">
+                <Undo2 className="h-4 w-4" />
+              </ToolbarButton>
+              <ToolbarButton title="Redo" aria-label="Redo" disabled={!canRedo} onClick={onRedo} className="px-2">
+                <Redo2 className="h-4 w-4" />
+              </ToolbarButton>
+              <span className="flex-1" />
+              {publish && publish.state !== 'never' && site.slug && (
+                <ToolbarButton
+                  title="Copy your page link"
+                  className="px-2 text-xs"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(`${window.location.origin}/${site.slug}`);
+                      toast.success('Link copied. Share it anywhere!');
+                    } catch {
+                      toast.error('Couldn’t copy the link');
+                    }
+                  }}
+                >
+                  <Link2 className="h-4 w-4" /> Copy link
+                </ToolbarButton>
+              )}
+              {publish && publish.state !== 'never' && (
+                <a href={publish.liveUrl} target="_blank" rel="noopener noreferrer" title="Open your live page" className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                  <ExternalLink className="h-4 w-4" /> View live
+                </a>
+              )}
+            </div>
+          </div>
+
+          {/* Tabs */}
+          {projectId && (pageHasWaitlist || !!waitlist.signups?.length) && (
+            <div className="flex gap-1 border-b border-gray-100 px-3 py-2" role="tablist">
+              {(['design', 'waitlist'] as const).map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === t}
+                  onClick={() => setTab(t)}
+                  className={cn('inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-sm font-medium cursor-pointer', tab === t ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100')}
+                >
+                  {t === 'design' ? 'Design' : 'Waitlist'}
+                  {t === 'waitlist' && !!waitlist.signups?.length && (
+                    <span className={cn('rounded-full px-1.5 text-xs font-semibold', tab === t ? 'bg-white text-gray-900' : 'bg-gray-900 text-white')}>{waitlist.signups.length}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="flex-1 overflow-y-auto">
+            {tab === 'waitlist' && projectId ? (
+              <WaitlistPanel data={waitlist} projectName={site.projectName} hasForm={pageHasWaitlist} />
+            ) : (
+              <DesignPanel site={site} onChange={onChange} onStartOver={startOver} removed={removedSections} />
+            )}
+          </div>
+        </aside>
       )}
       {insertAt !== null && <AddSectionDialog theme={site.theme} brand={brand} onPick={insertSection} onClose={() => setInsertAt(null)} />}
       {wizard && (
@@ -488,8 +526,9 @@ export default function SiteEditor({
             onChange(prev => ({ ...prev, projectName: next.projectName, template: next.template, sections: next.sections }));
             removedSections.current.clear();
             setWizard(false);
-            // Straight into editing, with style, color and sections at hand
-            setPanel('design');
+            // Straight into editing, with colors and sections at hand
+            setSidebarOpen(true);
+            setTab('design');
           }}
           onClose={() => setWizard(false)}
         />
