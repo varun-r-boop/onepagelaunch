@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { THEME_PRESETS } from '@/lib/site/themes';
+import { themeBackground } from '@/lib/site/themes';
 import { SECTION_CATALOG, cloneWithNewIds, createSection, sectionLabel } from '@/lib/site/sections';
 import { hasWaitlist } from '@/lib/site/publish';
 import type { CtaSection, HeroSection, Section, SectionType, SiteData, SiteTheme } from '@/lib/site/types';
@@ -143,7 +143,7 @@ function AddSectionDialog({ theme, brand, onPick, onClose }: { theme: SiteTheme;
             onPick={() => onPick(item.type)}
             className="group overflow-hidden rounded-xl border border-gray-200 text-left transition hover:border-gray-900 hover:shadow-lg"
           >
-            <div className="border-b border-gray-100" style={{ background: THEME_PRESETS[theme.preset].bg }}>
+            <div className="border-b border-gray-100" style={{ background: themeBackground(theme) }}>
               <ScaledPreview theme={theme} sections={[previews[item.type]]} height={150} scale={0.24} />
             </div>
             <div className="p-3">
@@ -484,7 +484,8 @@ export default function SiteEditor({
           templateId={site.template ?? 'launch'}
           base={{ projectName: site.projectName, slug: site.slug }}
           onFinish={next => {
-            onChange(prev => ({ ...prev, projectName: next.projectName, template: next.template, theme: next.theme, sections: next.sections }));
+            // Content is rebuilt from the answers; the colors and font the user picked stay
+            onChange(prev => ({ ...prev, projectName: next.projectName, template: next.template, sections: next.sections }));
             removedSections.current.clear();
             setWizard(false);
             // Straight into editing, with style, color and sections at hand

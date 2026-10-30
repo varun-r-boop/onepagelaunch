@@ -7,8 +7,12 @@ export type ThemeFont = 'inter' | 'grotesk' | 'serif' | 'mono';
 export type ThemeRadius = 'sharp' | 'rounded' | 'soft';
 
 export interface SiteTheme {
+  // Older pages: a fixed palette. New pages set `background` and the rest is derived.
   preset: ThemePreset;
+  // Primary color: buttons and highlights
   accent: string;
+  // Secondary color: the page background. Text, cards and borders are derived from it.
+  background?: string;
   font: ThemeFont;
   radius: ThemeRadius;
 }

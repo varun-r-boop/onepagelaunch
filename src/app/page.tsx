@@ -28,14 +28,14 @@ const features = [
   {
     color: 'bg-blue-50',
     emoji: '🧱',
-    title: 'Modern templates',
-    desc: 'Start from a polished SaaS page with hero, bento grid, pricing and FAQ.',
+    title: 'Modern by default',
+    desc: 'A polished SaaS page with hero, bento grid, pricing, FAQ and a waitlist.',
   },
   {
     color: 'bg-purple-50',
     emoji: '✍️',
     title: 'Click to edit',
-    desc: 'Change any text in place. Pick a theme, accent and font in one click.',
+    desc: 'Change any text in place. Pick your primary and secondary colors in one click.',
   },
   {
     color: 'bg-yellow-50',
@@ -171,9 +171,6 @@ export default function Home() {
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link href="/templates/launch" className="inline-flex items-center rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-gray-800">
               Start building: no sign-up needed →
-            </Link>
-            <Link href="/templates" className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-900 shadow-sm hover:border-gray-400">
-              Browse templates
             </Link>
           </div>
         </motion.section>

@@ -46,7 +46,7 @@ function Playground({ initialSite, restored, origin }: { initialSite: SiteData; 
         canUndo={canUndo}
         canRedo={canRedo}
         saveStatus="local"
-        backHref="/templates"
+        backHref="/"
         openSetupOnLoad={!restored}
         primaryAction={
           <button

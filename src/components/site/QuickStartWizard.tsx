@@ -79,7 +79,7 @@ export default function QuickStartWizard({ initialInfo, templateId, base, onFini
       >
         <div className="w-full max-w-lg">
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">Tell us about your product</h1>
-          <p className="mt-2 text-gray-500">We’ll write your page from this. Then pick a style and tweak anything right on the page.</p>
+          <p className="mt-2 text-gray-500">We’ll write your page from this. Then choose your colors and tweak anything right on the page.</p>
 
           <div className="mt-8 space-y-6">
             <Field label="Product name">

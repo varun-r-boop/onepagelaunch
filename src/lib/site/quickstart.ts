@@ -124,12 +124,6 @@ export function infoFromSite(site: SiteData): QuickStartInfo {
   };
 }
 
-// Applies a template's look (colors, font, corners) without touching content
-export function applyStyle(site: SiteData, templateId: string): SiteData {
-  const template = getTemplate(templateId);
-  return { ...site, template: template.id, theme: { ...template.theme } };
-}
-
 function brandOf(site: SiteData): string {
   const nav = site.sections.find(s => s.type === 'navbar');
   return nav?.type === 'navbar' ? nav.logo : site.projectName;

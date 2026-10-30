@@ -1,16 +1,15 @@
 # Site Builder (v2)
 
-New pages are built from **pre-designed sections styled by one theme**, inspired by bento.me and modern SaaS landing pages. Users never touch padding or borders. They pick a template, click text to edit it, and choose a theme.
+New pages are built from **pre-designed sections styled by one theme**, inspired by bento.me and modern SaaS landing pages. Users never touch padding or borders. They answer a few questions, click text to edit it, and pick two colors.
 
 ## How it works for users
 
-1. **Start without an account.** "Start building" on the homepage opens the editor at `/templates/launch`. The draft is kept in the browser, so a refresh doesn't lose it.
+1. **Start without an account.** "Start building" on the homepage opens the editor at `/templates/launch` (`/templates` redirects there). The draft is kept in the browser, so a refresh doesn't lose it.
 2. **Answer one short form:** product name, what it does (one line), and what the main button does (**collect emails** for a waitlist, or **open a link**), plus optional links. The page is written from these answers.
 3. **Edit and style in one place.** The editor opens with the **Design** panel beside the page:
-   - **Style** (Launch, Bento, Minimal) restyles instantly and keeps all your text.
-   - **Brand color**.
+   - **Primary color** (buttons and highlights) and **secondary color** (page background). Text, cards, borders and the hero glow are derived from these two. White + indigo is the default "Launch" look; midnight + lavender gives the dark "Bento" look.
    - **What's on your page**: switches for features, pricing, FAQ, testimonials and logos. Switching a section back on restores what you'd written, and nav links follow along.
-   - **Fine-tune**: theme, font and corners.
+   - **Fine-tune**: font and corners.
 4. **Edit in place:**
    - Click any text to change it.
    - Paste links to add tiles: a GitHub repo with stars, a playable video, an app with its rating, a tweet, a Discord invite, a website card. Social profiles also go into the footer.
@@ -28,11 +27,11 @@ New pages are built from **pre-designed sections styled by one theme**, inspired
 | Path | Purpose |
 | --- | --- |
 | `src/lib/site/types.ts` | `SiteData` (version 2), `Section` union, `BentoTile` |
-| `src/lib/site/themes.ts` | Theme presets → CSS variables (`--site-bg`, `--site-accent`, …) |
+| `src/lib/site/themes.ts` | Primary + secondary color → full palette as CSS variables (`--site-bg`, `--site-accent`, …). Older pages without a `background` keep their preset palette. |
 | `src/lib/site/sections.ts` | Default content for each section type and the section catalog |
 | `src/lib/site/templates.ts` | Templates and `createSiteFromTemplate()` |
 | `src/lib/site/quickstart.ts` | Builds a personalized page from the wizard answers |
-| `src/components/site/QuickStartWizard.tsx` | The 2-step setup wizard with live preview |
+| `src/components/site/QuickStartWizard.tsx` | The one-step setup form |
 | `src/lib/links/detect.ts` | Recognizes what a pasted URL is and builds a tile from the URL alone (works offline) |
 | `src/lib/links/fetch-preview.ts` | Server-side enrichment: page metadata, GitHub, YouTube/Loom/Vimeo, X, App Store, Discord |
 | `src/lib/links/apply.ts` | Adds pasted links to a page (tiles + footer socials) |
@@ -42,7 +41,7 @@ New pages are built from **pre-designed sections styled by one theme**, inspired
 | `src/components/site/editable.tsx` | `EditableText`, `EditableLink`, `EditableImage` and render mode |
 | `src/components/site/SiteEditor.tsx` | Editor shell: toolbar, section chrome, dialogs, Design panel |
 | `src/components/site/SiteProjectClient.tsx` | Owner editor: draft auto-save, Publish |
-| `src/components/site/design-panel.tsx` | Style, brand color, section switches, fine-tune |
+| `src/components/site/design-panel.tsx` | Primary/secondary colors, section switches, fine-tune |
 | `src/lib/site/publish.ts` | Draft vs published helpers (`liveSiteOf`, `draftOf`) |
 | `src/lib/site/draft-storage.ts` | Playground draft in localStorage, carried through sign-up |
 | `src/components/site/waitlist-form.tsx` | The email form visitors fill in |

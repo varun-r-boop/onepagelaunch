@@ -94,6 +94,73 @@ export const ACCENT_SWATCHES = [
   '#eab308', '#f97316', '#ef4444', '#ec4899', '#a855f7', '#111111',
 ];
 
+// Page background choices for the secondary color
+export const BACKGROUND_SWATCHES: { color: string; label: string }[] = [
+  { color: '#ffffff', label: 'White' },
+  { color: '#f6f7f9', label: 'Mist' },
+  { color: '#faf7f2', label: 'Cream' },
+  { color: '#09090b', label: 'Black' },
+  { color: '#070b1a', label: 'Midnight' },
+  { color: '#0b1410', label: 'Forest' },
+  { color: '#1c1917', label: 'Espresso' },
+];
+
+// ---------- Color math ----------
+
+function hexToRgb(hex: string): [number, number, number] | null {
+  const clean = hex.replace('#', '');
+  const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
+  if (!/^[0-9a-f]{6}$/i.test(full)) return null;
+  return [0, 2, 4].map(i => parseInt(full.slice(i, i + 2), 16)) as [number, number, number];
+}
+
+const toHex = (rgb: number[]) => `#${rgb.map(v => Math.round(v).toString(16).padStart(2, '0')).join('')}`;
+
+// Blends `b` into `a`; amount 0 = a, 1 = b
+function mix(a: string, b: string, amount: number): string {
+  const ra = hexToRgb(a);
+  const rb = hexToRgb(b);
+  if (!ra || !rb) return a;
+  return toHex(ra.map((v, i) => v + (rb[i] - v) * amount));
+}
+
+function withAlpha(hex: string, alpha: number): string {
+  const rgb = hexToRgb(hex);
+  return rgb ? `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})` : `rgba(0, 0, 0, ${alpha})`;
+}
+
+// WCAG relative luminance, 0 (black) to 1 (white)
+function luminance(hex: string): number {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 1;
+  const [r, g, b] = rgb.map(v => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+export const isDark = (hex: string) => luminance(hex) < 0.18;
+
+// Full palette from the two colors the user picks
+export function paletteFromColors(background: string, accent: string): Omit<PresetColors, 'label' | 'defaultAccent'> {
+  const dark = isDark(background);
+  const fg = dark ? mix(background, '#ffffff', 0.94) : mix(background, '#000000', 0.92);
+  return {
+    bg: background,
+    fg,
+    muted: mix(fg, background, 0.4),
+    card: mix(background, fg, dark ? 0.06 : 0.035),
+    border: mix(background, fg, dark ? 0.14 : 0.1),
+    glow: withAlpha(accent, dark ? 0.28 : 0.12),
+  };
+}
+
+// Background color of a theme, whichever system it uses
+export function themeBackground(theme: SiteTheme): string {
+  return theme.background ?? (THEME_PRESETS[theme.preset] ?? THEME_PRESETS.light).bg;
+}
+
 // Picks black or white text for a given background color
 export function readableOn(hex: string): string {
   const clean = hex.replace('#', '');
@@ -106,7 +173,9 @@ export function readableOn(hex: string): string {
 }
 
 export function themeToCssVars(theme: SiteTheme): CSSProperties {
-  const preset = THEME_PRESETS[theme.preset] ?? THEME_PRESETS.light;
+  const preset = theme.background
+    ? paletteFromColors(theme.background, theme.accent)
+    : THEME_PRESETS[theme.preset] ?? THEME_PRESETS.light;
   const font = THEME_FONTS[theme.font] ?? THEME_FONTS.inter;
   const radius = THEME_RADII[theme.radius] ?? THEME_RADII.rounded;
   return {

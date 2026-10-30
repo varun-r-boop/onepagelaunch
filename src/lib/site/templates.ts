@@ -14,7 +14,7 @@ export const SITE_TEMPLATES: SiteTemplate[] = [
     id: 'launch',
     name: 'Launch',
     description: 'The classic SaaS landing page: hero, bento features, pricing and FAQ.',
-    theme: { preset: 'light', accent: '#4f46e5', font: 'inter', radius: 'rounded' },
+    theme: { preset: 'light', accent: '#4f46e5', background: '#ffffff', font: 'inter', radius: 'rounded' },
     build: name => [
       createSection('navbar', name),
       createSection('hero', name),
@@ -31,7 +31,7 @@ export const SITE_TEMPLATES: SiteTemplate[] = [
     id: 'bento',
     name: 'Bento',
     description: 'A dark, tile-first page. Great for dev tools and indie products.',
-    theme: { preset: 'midnight', accent: '#818cf8', font: 'grotesk', radius: 'soft' },
+    theme: { preset: 'midnight', accent: '#818cf8', background: '#070b1a', font: 'grotesk', radius: 'soft' },
     build: name => {
       const nav = createSection('navbar', name) as NavbarSection;
       const hero = createSection('hero', name) as HeroSection;
@@ -67,7 +67,7 @@ export const SITE_TEMPLATES: SiteTemplate[] = [
     id: 'minimal',
     name: 'Minimal',
     description: 'Editorial and calm. A short page that gets straight to the point.',
-    theme: { preset: 'cream', accent: '#ea580c', font: 'serif', radius: 'sharp' },
+    theme: { preset: 'cream', accent: '#ea580c', background: '#faf7f2', font: 'serif', radius: 'sharp' },
     build: name => {
       const hero = createSection('hero', name) as HeroSection;
       const bento = createSection('bento', name) as BentoSection;
