@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
 import type { SupabaseProject } from '@/lib/types';
+import { createSiteFromTemplate } from '@/lib/site/templates';
 
 function CreatePageContent() {
   const router = useRouter();
@@ -119,45 +120,8 @@ function CreatePageContent() {
             // (don't redirect to existing projects when user specifically wants this slug)
           }
 
-          // Create project with API
-          const blankProjectData = {
-            "projectName": `${urlSlug}'s Page`,
-            "blocks": [
-              {
-                "id": "hero-1",
-                "type": "hero",
-                "data": {
-                  "title": "Welcome to my page",
-                  "subtitle": "I'm building something amazing. Stay tuned!",
-                  "primaryButton": {
-                    "text": "Get Started",
-                    "url": "#"
-                  },
-                  "secondaryButton": {
-                    "text": "Learn More",
-                    "url": "#"
-                  }
-                },
-                "style": {
-                  "backgroundColor": "#ffffff",
-                  "textColor": "#1f2937",
-                  "primaryButtonColor": "#3b82f6",
-                  "secondaryButtonColor": "#6b7280"
-                }
-              }
-            ],
-            "globalStyles": {
-              "fontFamily": "Inter",
-              "primaryColor": "#3b82f6",
-              "backgroundColor": "#ffffff"
-            },
-            "metadata": {
-              "title": `${urlSlug}'s Page`,
-              "description": "Built with OnePageLaunch",
-              "favicon": "/favicon.svg"
-            },
-            "slug": urlSlug
-          };
+          // New projects start from a template; the editor opens the template picker on first visit
+          const blankProjectData = createSiteFromTemplate('launch', `${urlSlug}'s Page`, urlSlug);
 
           let response;
           let result;
@@ -191,7 +155,7 @@ function CreatePageContent() {
           }
           
           if (result.success) {
-            router.push(`/${urlSlug}`);
+            router.push(`/${urlSlug}?welcome=1`);
           } else if (response.status === 403 && result.existingProject) {
             // User already has a project, redirect to it without showing error
             router.push(`/${result.existingProject.slug}`);

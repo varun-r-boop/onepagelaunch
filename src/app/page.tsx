@@ -28,14 +28,14 @@ const features = [
   {
     color: 'bg-blue-50',
     emoji: '🧱',
-    title: 'Drag and Drop',
-    desc: 'Arrange blocks like Lego pieces to build your story.',
+    title: 'Modern templates',
+    desc: 'Start from a polished SaaS page with hero, bento grid, pricing and FAQ.',
   },
   {
     color: 'bg-purple-50',
-    emoji: '🎨',
-    title: 'Custom Styling',
-    desc: 'Change backgrounds, borders, and layouts on the fly.',
+    emoji: '✍️',
+    title: 'Click to edit',
+    desc: 'Change any text in place. Pick a theme, accent and font in one click.',
   },
   {
     color: 'bg-yellow-50',
@@ -166,8 +166,13 @@ export default function Home() {
             Launch your site brick by brick
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-          Create your product page in minutes with blocks. Drag, drop, and customize each block your way.
+          Create a modern landing page for your SaaS in minutes. Pick a template, click to edit, and launch.
           </p>
+          <div className="mt-8">
+            <Link href="/templates" className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-900 shadow-sm hover:border-gray-400">
+              Browse templates →
+            </Link>
+          </div>
         </motion.section>
 
         {/* Features Grid */}
@@ -198,6 +203,7 @@ export default function Home() {
 
         {/* CTA or Slug Form */}
         <motion.section
+          id="get-started"
           className="text-center mt-24"
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}

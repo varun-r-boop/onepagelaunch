@@ -6,6 +6,7 @@ import Link from 'next/link';
 import BlockPreview from './block-editor/BlockPreview';
 import { toast } from 'sonner';
 import FloatingActionBar from './block-editor/FloatingActionBar';
+import { createSiteFromTemplate } from '@/lib/site/templates';
 
 interface ProjectPageClientProps {
   project: BlockProjectData;
@@ -329,8 +330,35 @@ export function ProjectPageClient({ project, isOwner, projectId }: ProjectPageCl
     });
   };
 
+  // Moves this page onto the template-based builder. Replaces the current blocks.
+  const switchToTemplates = async () => {
+    if (!window.confirm('Switch to the new template builder? This replaces the blocks on this page with a template you can edit.')) return;
+    const site = createSiteFromTemplate('launch', editedProject.projectName, editedProject.slug);
+    try {
+      const response = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectData: site, editId: projectId }),
+      });
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error);
+      window.location.href = `/${editedProject.slug}?welcome=1`;
+    } catch (error) {
+      console.error('Error switching builder:', error);
+      toast.error('Failed to switch. Please try again.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
+      {isOwner && (
+        <div className="flex flex-wrap items-center justify-center gap-3 bg-gray-900 px-4 py-2.5 text-sm text-white">
+          <span>✨ New: modern SaaS templates with a bento grid, pricing, FAQ and themes.</span>
+          <button onClick={switchToTemplates} className="rounded-md bg-white px-3 py-1 text-xs font-semibold text-gray-900 hover:bg-gray-100 cursor-pointer">
+            Switch this page
+          </button>
+        </div>
+      )}
       <div className="pt-20 pb-16">
         <div className="project-block-preview">
           <div className="container mx-auto px-4 py-8">
