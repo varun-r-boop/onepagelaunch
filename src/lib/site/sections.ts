@@ -15,6 +15,7 @@ export function newTile(kind: TileKind = 'feature', overrides: Partial<BentoTile
     image: { kind: 'image', size: 'wide', title: 'Product screenshot', body: '', imageUrl: '' },
     quote: { kind: 'quote', size: 'wide', title: 'Jane Doe, Founder', body: '“This replaced three tools for us on day one.”' },
     link: { kind: 'link', size: 'sm', icon: 'github', title: 'GitHub', body: 'Star the repo', url: 'https://github.com' },
+    video: { kind: 'video', size: 'wide', title: 'Product demo', body: '', url: '' },
   };
   return { id: uid('tile'), ...defaults[kind], ...overrides };
 }

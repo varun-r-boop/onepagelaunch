@@ -2,6 +2,8 @@ import {
   Zap, Sparkles, Shield, Lock, Rocket, Globe, BarChart3, Layers, Code2, Terminal,
   Cpu, Database, Cloud, Users, MessageSquare, Bell, Clock, Heart, Star, Palette,
   Puzzle, Workflow, Bot, Gauge, Github, Twitter, Linkedin, Youtube, Mail, Link2,
+  Instagram, Facebook, Twitch, Dribbble, Figma, Slack, Apple, Play, Calendar, Award,
+  MessageCircle, Music2, AtSign, Newspaper, Video, Gitlab,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -37,6 +39,22 @@ export const SITE_ICONS: Record<string, LucideIcon> = {
   youtube: Youtube,
   mail: Mail,
   link: Link2,
+  instagram: Instagram,
+  facebook: Facebook,
+  twitch: Twitch,
+  dribbble: Dribbble,
+  figma: Figma,
+  slack: Slack,
+  apple: Apple,
+  play: Play,
+  calendar: Calendar,
+  award: Award,
+  discord: MessageCircle,
+  tiktok: Music2,
+  at: AtSign,
+  newspaper: Newspaper,
+  video: Video,
+  gitlab: Gitlab,
 };
 
 export function getSiteIcon(key?: string): LucideIcon {

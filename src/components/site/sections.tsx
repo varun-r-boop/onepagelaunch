@@ -1,17 +1,19 @@
 'use client';
 
 import * as React from 'react';
-import { ArrowUpRight, Check, ChevronDown, Quote } from 'lucide-react';
+import { ArrowUpRight, Check, ChevronDown, Play, Quote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getSiteIcon } from '@/lib/site/icons';
+import { isAllowedEmbed } from '@/lib/links/detect';
 import { link as newLink, newFaq, newPlan, newTestimonial, newTile } from '@/lib/site/sections';
 import type {
   BentoSection, BentoTile, CtaSection, FaqSection, FooterSection, HeroSection, LogosSection,
   NavbarSection, PricingSection, Section, TestimonialsSection, TileSize,
 } from '@/lib/site/types';
 import {
-  AddItemButton, EditableImage, EditableLink, EditableText, RemoveItemButton, removeAt, replaceAt, useEditMode, useIsThumbnail,
+  AddItemButton, EditableImage, EditableLink, EditableText, RemoveItemButton, normalizeUrl, removeAt, replaceAt, useEditMode, useIsThumbnail,
 } from './editable';
+import { LinkPasteBox } from './link-paste-box';
 import { TileControls } from './tile-controls';
 
 interface SectionProps<T extends Section> {
@@ -199,6 +201,14 @@ const tileSizeClass: Record<TileSize, string> = {
   lg: '@xl:col-span-2 @xl:row-span-2',
 };
 
+// Remote images from pasted links can disappear; hide them instead of showing a broken icon
+function RemoteImage({ src, className }: { src: string; className?: string }) {
+  const [failed, setFailed] = React.useState(false);
+  if (failed) return null;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" className={className} onError={() => setFailed(true)} />;
+}
+
 function TileView({ tile, onChange }: { tile: BentoTile; onChange: (tile: BentoTile) => void }) {
   const Icon = getSiteIcon(tile.icon);
   const accent = tile.accent;
@@ -207,6 +217,10 @@ function TileView({ tile, onChange }: { tile: BentoTile; onChange: (tile: BentoT
   const mutedTone = accent ? 'text-[var(--site-accent-fg)] opacity-80' : 'text-[var(--site-muted)]';
 
   const set = (patch: Partial<BentoTile>) => onChange({ ...tile, ...patch });
+  const editable = useEditMode();
+  const thumbnail = useIsThumbnail();
+  // Iframes would swallow clicks in the editor and are heavy in thumbnails
+  const playable = !editable && !thumbnail;
 
   let body: React.ReactNode;
   switch (tile.kind) {
@@ -243,22 +257,65 @@ function TileView({ tile, onChange }: { tile: BentoTile; onChange: (tile: BentoT
         </div>
       );
       break;
-    case 'link':
+    case 'link': {
+      const showImage = !!tile.imageUrl && tile.size !== 'sm';
       body = (
-        <div className="flex h-full flex-col justify-between gap-6">
+        <div className="flex h-full flex-col gap-4">
           <div className="flex items-start justify-between">
-            <span className={cn('flex h-11 w-11 items-center justify-center rounded-[calc(var(--site-radius)*0.7)]', accent ? 'bg-black/15' : 'bg-[var(--site-bg)] border border-[var(--site-border)]')}>
-              <Icon className={cn('h-5 w-5', tone)} />
-            </span>
+            {tile.iconUrl ? (
+              <RemoteImage src={tile.iconUrl} className="h-11 w-11 rounded-[calc(var(--site-radius)*0.7)] border border-[var(--site-border)] bg-white object-cover" />
+            ) : (
+              <span className={cn('flex h-11 w-11 items-center justify-center rounded-[calc(var(--site-radius)*0.7)]', accent ? 'bg-black/15' : 'bg-[var(--site-bg)] border border-[var(--site-border)]')}>
+                <Icon className={cn('h-5 w-5', tone)} />
+              </span>
+            )}
             <ArrowUpRight className={cn('h-5 w-5 transition group-hover/tile:translate-x-0.5 group-hover/tile:-translate-y-0.5', mutedTone)} />
           </div>
-          <div>
+          {showImage && (
+            <div className="min-h-0 flex-1 overflow-hidden rounded-[calc(var(--site-radius)*0.6)] border border-[var(--site-border)]">
+              <RemoteImage src={tile.imageUrl!} className="h-full max-h-60 w-full object-cover" />
+            </div>
+          )}
+          <div className={cn(!showImage && 'mt-auto')}>
             <EditableText value={tile.title} onChange={title => set({ title })} className={cn('text-lg font-semibold', tone)} as="p" />
-            <EditableText value={tile.body} onChange={b => set({ body: b })} className={cn('text-sm', mutedTone)} as="p" />
+            <EditableText value={tile.body} onChange={b => set({ body: b })} className={cn('line-clamp-3 text-sm', mutedTone)} as="p" />
+            {tile.meta && <p className={cn('mt-2 text-xs font-medium', mutedTone)}>{tile.meta}</p>}
           </div>
         </div>
       );
       break;
+    }
+    case 'video': {
+      const embed = isAllowedEmbed(tile.embedUrl) ? tile.embedUrl : undefined;
+      body = (
+        <div className="flex h-full flex-col gap-3">
+          <div className="relative aspect-video w-full flex-1 overflow-hidden rounded-[calc(var(--site-radius)*0.6)] bg-black">
+            {playable && embed ? (
+              <iframe
+                src={embed}
+                title={tile.title || 'Video'}
+                loading="lazy"
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+                className="absolute inset-0 h-full w-full"
+              />
+            ) : (
+              <>
+                {tile.imageUrl && <RemoteImage src={tile.imageUrl} className="absolute inset-0 h-full w-full object-cover opacity-90" />}
+                <span className="absolute inset-0 flex items-center justify-center">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 shadow-lg">
+                    <Play className="ml-0.5 h-6 w-6 fill-black text-black" />
+                  </span>
+                </span>
+              </>
+            )}
+          </div>
+          <EditableText value={tile.title} placeholder="Video title" onChange={title => set({ title })} className={cn('text-sm font-semibold', tone)} as="p" />
+        </div>
+      );
+      break;
+    }
     default:
       body = (
         <div className={cn('flex h-full flex-col gap-4', big && 'justify-between')}>
@@ -304,12 +361,14 @@ function BentoView({ section, onChange }: SectionProps<BentoSection>) {
             const className = cn(
               'group/tile relative overflow-hidden p-6 transition',
               tile.accent ? 'rounded-[var(--site-radius)] bg-[var(--site-accent)]' : card,
-              tile.kind === 'link' && !editable && 'hover:-translate-y-0.5 hover:shadow-lg',
+              tile.kind === 'link' && linkable && 'hover:-translate-y-0.5 hover:shadow-lg',
               tileSizeClass[tile.size],
             );
             const content = <TileView tile={tile} onChange={t => setTile(i, t)} />;
-            return tile.kind === 'link' && linkable ? (
-              <a key={tile.id} href={tile.url || '#'} target="_blank" rel="noopener noreferrer" className={className}>
+            // Link tiles, and videos without a playable embed, open their URL
+            const opensUrl = tile.kind === 'link' || (tile.kind === 'video' && !isAllowedEmbed(tile.embedUrl) && !!tile.url);
+            return opensUrl && linkable ? (
+              <a key={tile.id} href={normalizeUrl(tile.url ?? '')} target="_blank" rel="noopener noreferrer" className={className}>
                 {content}
               </a>
             ) : (
@@ -324,7 +383,7 @@ function BentoView({ section, onChange }: SectionProps<BentoSection>) {
               </div>
             );
           })}
-          <AddItemButton label="Add tile" className="min-h-[190px]" onClick={() => onChange({ ...section, tiles: [...section.tiles, newTile('feature')] })} />
+          <LinkPasteBox sectionId={section.id} onAddBlank={() => onChange({ ...section, tiles: [...section.tiles, newTile('feature')] })} />
         </div>
       </div>
     </section>

@@ -20,7 +20,7 @@ export interface SiteLink {
 }
 
 export type TileSize = 'sm' | 'wide' | 'tall' | 'lg';
-export type TileKind = 'feature' | 'stat' | 'image' | 'quote' | 'link';
+export type TileKind = 'feature' | 'stat' | 'image' | 'quote' | 'link' | 'video';
 
 export interface BentoTile {
   id: string;
@@ -32,6 +32,11 @@ export interface BentoTile {
   imageUrl?: string;
   url?: string;
   accent?: boolean;
+  // Filled in from a pasted link: player URL for video tiles, a logo/avatar,
+  // and a small detail line such as "★ 12.4k · TypeScript"
+  embedUrl?: string;
+  iconUrl?: string;
+  meta?: string;
 }
 
 export interface PricingPlan {

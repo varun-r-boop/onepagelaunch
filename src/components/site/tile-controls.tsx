@@ -5,6 +5,8 @@ import { ChevronLeft, ChevronRight, Droplet, Link2, Smile, Trash2 } from 'lucide
 import { cn } from '@/lib/utils';
 import { SITE_ICONS } from '@/lib/site/icons';
 import type { BentoTile, TileKind, TileSize } from '@/lib/site/types';
+import { resolveLinks } from '@/lib/links/client';
+import { tileFromPreview } from '@/lib/links/detect';
 import { EditorField, EditorPopover, normalizeUrl, useEditMode } from './editable';
 
 const SIZES: { size: TileSize; label: string; w: number; h: number }[] = [
@@ -20,6 +22,7 @@ const KINDS: { kind: TileKind; label: string }[] = [
   { kind: 'image', label: 'Image' },
   { kind: 'quote', label: 'Quote' },
   { kind: 'link', label: 'Link' },
+  { kind: 'video', label: 'Video' },
 ];
 
 const iconButton = 'flex h-7 w-7 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 cursor-pointer';
@@ -33,10 +36,27 @@ export function TileControls({ tile, onChange, onRemove, onMove }: {
   const editable = useEditMode();
   const [panel, setPanel] = React.useState<'icon' | 'link' | null>(null);
   const [url, setUrl] = React.useState(tile.url ?? '');
+  const [loading, setLoading] = React.useState(false);
   const close = React.useCallback(() => setPanel(null), []);
 
+  // A new link refreshes the tile's title, image and details from that link
+  const saveUrl = async () => {
+    setPanel(null);
+    const next = normalizeUrl(url);
+    if (next === tile.url) return;
+    setLoading(true);
+    try {
+      const [preview] = await resolveLinks(next);
+      const fresh = preview ? tileFromPreview(preview, tile.size) : null;
+      onChange(fresh ? { ...fresh, id: tile.id, accent: tile.accent } : { ...tile, url: next });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!editable) return null;
-  const hasIcon = tile.kind === 'feature' || tile.kind === 'link';
+  const hasIcon = tile.kind === 'feature' || (tile.kind === 'link' && !tile.iconUrl);
+  const hasUrl = tile.kind === 'link' || tile.kind === 'video' || (tile.kind === 'quote' && !!tile.url);
 
   return (
     <div
@@ -78,9 +98,9 @@ export function TileControls({ tile, onChange, onRemove, onMove }: {
           <Smile className="h-4 w-4" />
         </button>
       )}
-      {tile.kind === 'link' && (
+      {hasUrl && (
         <button type="button" title="Link URL" className={iconButton} onClick={() => { setUrl(tile.url ?? ''); setPanel(panel === 'link' ? null : 'link'); }}>
-          <Link2 className="h-4 w-4" />
+          <Link2 className={cn('h-4 w-4', loading && 'animate-pulse')} />
         </button>
       )}
       <button
@@ -118,13 +138,14 @@ export function TileControls({ tile, onChange, onRemove, onMove }: {
         </div>
       </EditorPopover>
 
-      <EditorPopover open={panel === 'link'} onClose={() => { onChange({ ...tile, url: normalizeUrl(url) }); setPanel(null); }} className="right-0 top-full">
-        <EditorField label="Where should this tile link to?" value={url} placeholder="https://github.com/you" onChange={setUrl} autoFocus />
+      <EditorPopover open={panel === 'link'} onClose={() => void saveUrl()} className="right-0 top-full">
+        <EditorField label="Link" value={url} placeholder="https://github.com/you" onChange={setUrl} autoFocus />
+        <p className="mb-2 text-xs text-gray-500">The tile updates from the link (title, image, stars…).</p>
         <div className="mt-2 flex justify-end">
           <button
             type="button"
             className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white cursor-pointer"
-            onClick={() => { onChange({ ...tile, url: normalizeUrl(url) }); setPanel(null); }}
+            onClick={() => void saveUrl()}
           >
             Save
           </button>

@@ -16,6 +16,10 @@ import SiteRenderer, { SiteFonts, ThemeFrame } from './SiteRenderer';
 import { RenderModeContext } from './editable';
 import { SectionView } from './sections';
 import QuickStartWizard from './QuickStartWizard';
+import { SiteActionsContext, type SiteActions } from './link-paste-box';
+import { resolveLinks } from '@/lib/links/client';
+import { extractUrls } from '@/lib/links/detect';
+import { LINKS_SECTION_ID, applyLinksToSite } from '@/lib/links/apply';
 
 export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error' | 'local';
 
@@ -363,6 +367,40 @@ export default function SiteEditor({
 
   const editing = !preview;
 
+  // Pasted links become tiles; social profiles are also added to the footer
+  const addLinks = React.useCallback<SiteActions['addLinks']>(async (text, sectionId) => {
+    const previews = await resolveLinks(text);
+    if (previews.length === 0) return;
+    let added = { tiles: 0, socials: 0 };
+    onChange(prev => {
+      const result = applyLinksToSite(prev, previews, sectionId);
+      added = result;
+      return result.site;
+    });
+    const tiles = `Added ${added.tiles} ${added.tiles === 1 ? 'tile' : 'tiles'}`;
+    toast.success(added.socials ? `${tiles} and ${added.socials} footer ${added.socials === 1 ? 'link' : 'links'}` : tiles);
+    if (!sectionId) {
+      setTimeout(() => document.getElementById(LINKS_SECTION_ID)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    }
+  }, [onChange]);
+  const siteActions = React.useMemo(() => ({ addLinks }), [addLinks]);
+
+  // Pasting links anywhere on the page (outside a text field) adds them too
+  React.useEffect(() => {
+    if (!editing || wizard || insertAt !== null) return;
+    const onPaste = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) return;
+      const text = e.clipboardData?.getData('text/plain') ?? '';
+      if (extractUrls(text).length === 0) return;
+      e.preventDefault();
+      toast.loading('Adding your links…', { id: 'paste-links' });
+      void addLinks(text).finally(() => toast.dismiss('paste-links'));
+    };
+    document.addEventListener('paste', onPaste);
+    return () => document.removeEventListener('paste', onPaste);
+  }, [editing, wizard, insertAt, addLinks]);
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Top bar */}
@@ -431,7 +469,7 @@ export default function SiteEditor({
         <div className={cn('mx-auto py-6', device === 'mobile' ? 'w-[390px]' : 'w-full px-3 sm:px-6')}>
           {editing && site.sections.length > 0 && (
             <p className="mb-3 text-center text-xs text-gray-500">
-              Click any text to edit it · Click buttons to change links · Hover a section or tile for more options
+              Click any text to edit it · Paste a link anywhere to add it as a tile · Hover a section or tile for more options
             </p>
           )}
           <div className={cn('overflow-hidden bg-white shadow-sm ring-1 ring-gray-200', device === 'mobile' ? 'rounded-[28px]' : 'rounded-xl')}>
@@ -444,6 +482,7 @@ export default function SiteEditor({
                 </div>
               </div>
             ) : (
+              <SiteActionsContext.Provider value={siteActions}>
               <SiteRenderer
                 site={site}
                 editable={editing}
@@ -463,6 +502,7 @@ export default function SiteEditor({
                   </SectionChrome>
                 ) : undefined}
               />
+              </SiteActionsContext.Provider>
             )}
           </div>
           {editing && site.sections.length > 0 && (
@@ -484,6 +524,7 @@ export default function SiteEditor({
           initialChoices={wizardChoices}
           base={{ projectName: site.projectName, slug: site.slug }}
           startAtStyle={wizard === 'restyle'}
+          carryFrom={wizard === 'restyle' ? site : undefined}
           onFinish={next => {
             onChange(prev => ({ ...prev, projectName: next.projectName, template: next.template, theme: next.theme, sections: next.sections }));
             setWizard(null);

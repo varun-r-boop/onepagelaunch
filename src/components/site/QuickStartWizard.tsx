@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ArrowLeft, ArrowRight, Check, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader2, Sparkles, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ACCENT_SWATCHES, THEME_PRESETS, readableOn } from '@/lib/site/themes';
 import { SITE_TEMPLATES, getTemplate } from '@/lib/site/templates';
@@ -9,6 +9,9 @@ import {
   OPTIONAL_SECTIONS, buildQuickStartSite, type QuickStartChoices, type QuickStartInfo,
 } from '@/lib/site/quickstart';
 import type { SectionType, SiteData } from '@/lib/site/types';
+import { resolveLinks } from '@/lib/links/client';
+import { detectLink, extractUrls, type LinkPreview } from '@/lib/links/detect';
+import { applyLinksToSite, carryOverLinks } from '@/lib/links/apply';
 import SiteRenderer from './SiteRenderer';
 
 interface QuickStartWizardProps {
@@ -17,6 +20,8 @@ interface QuickStartWizardProps {
   base: Pick<SiteData, 'projectName' | 'slug'>;
   // Restyling an existing page skips straight to the look, with the user's text kept
   startAtStyle?: boolean;
+  // When restyling, links already on this page are kept
+  carryFrom?: SiteData;
   onFinish: (site: SiteData) => void;
   onClose?: () => void;
 }
@@ -60,14 +65,41 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 
 const inputClass = 'mt-1 w-full rounded-xl border border-gray-300 px-4 py-3 text-base outline-none transition focus:border-gray-900 focus:ring-4 focus:ring-gray-900/5';
 
-export default function QuickStartWizard({ initialInfo, initialChoices, base, startAtStyle, onFinish, onClose }: QuickStartWizardProps) {
+export default function QuickStartWizard({ initialInfo, initialChoices, base, startAtStyle, carryFrom, onFinish, onClose }: QuickStartWizardProps) {
   const [step, setStep] = React.useState<1 | 2>(startAtStyle ? 2 : 1);
   const [info, setInfo] = React.useState(initialInfo);
   const [choices, setChoices] = React.useState(initialChoices);
 
+  const [linksText, setLinksText] = React.useState('');
+  const [previews, setPreviews] = React.useState<LinkPreview[]>([]);
+  const [resolvedFor, setResolvedFor] = React.useState('');
+  const [resolving, setResolving] = React.useState(false);
+
   const { projectName, slug } = base;
-  const preview = React.useMemo(() => buildQuickStartSite(info, choices, { projectName, slug }), [info, choices, projectName, slug]);
-  const canContinue = info.name.trim().length > 0;
+  const preview = React.useMemo(() => {
+    // No description typed? Borrow one from their repo, app or website
+    // (only real fetched text, not the generic fallback like "View the source on GitHub")
+    const borrowed = previews.find(p => ['repo', 'app', 'page'].includes(p.kind) && p.description && p.description !== detectLink(p.url).description)?.description ?? '';
+    const filled = { ...info, description: info.description.trim() || borrowed };
+    const built = applyLinksToSite(buildQuickStartSite(filled, choices, { projectName, slug }), previews).site;
+    return carryFrom ? carryOverLinks(carryFrom, built) : built;
+  }, [info, choices, projectName, slug, previews, carryFrom]);
+  const canContinue = info.name.trim().length > 0 && !resolving;
+  const linkCount = extractUrls(linksText).length;
+
+  const next = async () => {
+    if (!canContinue) return;
+    if (linksText !== resolvedFor) {
+      setResolving(true);
+      try {
+        setPreviews(await resolveLinks(linksText));
+        setResolvedFor(linksText);
+      } finally {
+        setResolving(false);
+      }
+    }
+    setStep(2);
+  };
 
   const toggle = (type: SectionType) =>
     setChoices(c => ({ ...c, include: c.include.includes(type) ? c.include.filter(t => t !== type) : [...c.include, type] }));
@@ -96,7 +128,7 @@ export default function QuickStartWizard({ initialInfo, initialChoices, base, st
       {step === 1 ? (
         <form
           className="flex flex-1 items-start justify-center overflow-y-auto px-4 py-10 sm:items-center"
-          onSubmit={e => { e.preventDefault(); if (canContinue) setStep(2); }}
+          onSubmit={e => { e.preventDefault(); void next(); }}
         >
           <div className="w-full max-w-lg">
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">Tell us about your product</h1>
@@ -121,6 +153,16 @@ export default function QuickStartWizard({ initialInfo, initialChoices, base, st
               <Field label="Where should your main button go?" hint="Optional. Your sign-up page, app, waitlist or email.">
                 <input value={info.link} onChange={setInfoField('link')} placeholder="app.acme.com/signup" className={inputClass} />
               </Field>
+              <Field label="Your links" hint="Optional. Paste any links, one per line: GitHub, a demo video, App Store, X, LinkedIn, Discord… Each becomes a tile.">
+                <textarea
+                  rows={3}
+                  value={linksText}
+                  onChange={e => setLinksText(e.target.value)}
+                  placeholder={'github.com/acme/acme\nyoutube.com/watch?v=…\nx.com/acme'}
+                  className={cn(inputClass, 'resize-none font-mono text-sm')}
+                />
+                {linkCount > 0 && <span className="mt-1 block text-xs text-gray-500">{linkCount} {linkCount === 1 ? 'link' : 'links'} found</span>}
+              </Field>
             </div>
 
             <button
@@ -128,7 +170,11 @@ export default function QuickStartWizard({ initialInfo, initialChoices, base, st
               disabled={!canContinue}
               className="mt-10 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-6 py-3.5 text-base font-semibold text-white transition hover:bg-gray-800 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
             >
-              Next: pick a look <ArrowRight className="h-4 w-4" />
+              {resolving ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Reading your links…</>
+              ) : (
+                <>Next: pick a look <ArrowRight className="h-4 w-4" /></>
+              )}
             </button>
           </div>
         </form>
