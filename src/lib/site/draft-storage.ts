@@ -10,11 +10,14 @@ export interface StoredDraft {
   publish: boolean;
   // Template page the draft was started from (the style may have changed since)
   origin?: string;
+  // Page address claimed on the homepage, used when publishing
+  address?: string;
 }
 
-export function saveDraft(site: SiteData, publish = false, origin?: string): void {
+export function saveDraft(site: SiteData, options: { publish?: boolean; origin?: string; address?: string } = {}): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ site, publish, origin } satisfies StoredDraft));
+    const draft: StoredDraft = { site, publish: !!options.publish, origin: options.origin, address: options.address };
+    localStorage.setItem(KEY, JSON.stringify(draft));
   } catch {
     // Storage full or blocked: the playground still works, it just won't persist
   }

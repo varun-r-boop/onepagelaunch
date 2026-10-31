@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { BlockProjectData } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
+import { slugProblem } from '@/lib/slug';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,6 +18,11 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    // Checked for new addresses only, so existing pages keep saving
+    const badSlug = () => NextResponse.json(
+      { error: 'This page address isn’t available. Use at least 3 letters or numbers, and not a reserved word.' },
+      { status: 400 }
+    );
 
     // --- Authenticate user ---
     const supabase = await createClient();
@@ -42,6 +48,7 @@ export async function POST(request: NextRequest) {
 
       // If slug has changed, check for uniqueness
       if (slug !== existingProject.slug) {
+        if (slugProblem(slug)) return badSlug();
         const { data: slugCheck } = await supabase
           .from('projects')
           .select('id')
@@ -91,6 +98,8 @@ export async function POST(request: NextRequest) {
           { status: 403 }
         );
       }
+
+      if (slugProblem(slug)) return badSlug();
 
       // 2. Check slug uniqueness
       const { data: slugCheck, error: slugError } = await supabase

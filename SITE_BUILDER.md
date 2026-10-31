@@ -4,7 +4,7 @@ New pages are built from **pre-designed sections styled by one theme**, inspired
 
 ## How it works for users
 
-1. **Start without an account.** "Start building" on the homepage opens the editor at `/templates/launch` (`/templates` redirects there). The draft is kept in the browser, so a refresh doesn't lose it.
+1. **Claim an address, no account needed.** The homepage asks for the page address first (`onepagelaunch.vercel.app/your-product`) and checks it's free as you type. Addresses need at least 3 characters and can't use reserved words like `dashboard` (`src/lib/slug.ts`, also enforced by the API for new addresses). "Start building" opens the editor at `/templates/launch?slug=…`. The product name is pre-filled from the address, and the address is used again when publishing. The draft and address are kept in the browser, so a refresh doesn't lose them.
 2. **Answer one short form:** product name, what it does (one line), and what the main button does (**collect emails** for a waitlist, or **open a link**), plus optional links. The page is written from these answers.
 3. **Edit and style in one place.** The top bar only holds the page name, the save status and **Publish**. Everything else is in the sidebar on the right:
    - **Tools:** Preview, desktop/mobile view, undo/redo, plus Copy link and View live once published.
@@ -48,7 +48,10 @@ New pages are built from **pre-designed sections styled by one theme**, inspired
 | `src/components/site/SiteProjectClient.tsx` | Owner editor: draft auto-save, Publish |
 | `src/components/site/design-panel.tsx` | Primary/secondary colors, section switches, fine-tune |
 | `src/lib/site/publish.ts` | Draft vs published helpers (`liveSiteOf`, `draftOf`) |
-| `src/lib/site/draft-storage.ts` | Playground draft in localStorage, carried through sign-up |
+| `src/lib/site/draft-storage.ts` | Playground draft (and claimed address) in localStorage, carried through sign-up |
+| `src/lib/slug.ts` | Page address rules: allowed characters, minimum length, reserved words |
+| `src/components/address-form.tsx` | "Claim your address" field with a live availability check (homepage, Publish dialog) |
+| `src/app/page.tsx` | The OnePageLaunch homepage |
 | `src/components/site/waitlist-form.tsx` | The email form visitors fill in |
 | `src/components/site/waitlist-panel.tsx` | The owner's sign-up list and CSV export |
 | `src/app/api/waitlist/route.ts` | `POST` join a waitlist (public) · `GET` list sign-ups (owner) |
