@@ -11,6 +11,8 @@ import type { SupabaseProject } from '@/lib/types';
 import { createSiteFromTemplate } from '@/lib/site/templates';
 import { clearDraft, loadDraft } from '@/lib/site/draft-storage';
 import type { SiteData } from '@/lib/site/types';
+import { PAGE_HOST } from '@/lib/slug';
+import { AddressForm } from '@/components/address-form';
 
 function CreatePageContent() {
   const router = useRouter();
@@ -21,9 +23,10 @@ function CreatePageContent() {
   const [loading, setLoading] = useState(true);
   const [isSigningIn, setIsSigningIn] = useState(false);
   
-  const [slug, setSlug] = useState('');
-  const [isSlugAvailable, setIsSlugAvailable] = useState<boolean | null>(null);
-  const [isCheckingSlug, setIsCheckingSlug] = useState(false);
+  // Shown instead of the spinner when creating the page fails
+  const [problem, setProblem] = useState<{ kind: 'limit'; existingSlug: string } | { kind: 'error'; message: string } | null>(null);
+  // Bumped by "Try again" to re-run creation
+  const [attempt, setAttempt] = useState(0);
 
   // Flag to prevent duplicate project creation calls
   const projectCreationInitiated = useRef<string | null>(null);
@@ -60,12 +63,6 @@ function CreatePageContent() {
     return () => subscription.unsubscribe();
   }, [supabase.auth]);
 
-  // Set slug from URL parameter if available
-  useEffect(() => {
-    if (urlSlug) {
-      setSlug(urlSlug);
-    }
-  }, [urlSlug]);
 
   // Add this effect after user and slug are set
   useEffect(() => {
@@ -130,49 +127,31 @@ function CreatePageContent() {
             ? { ...draft.site, slug: urlSlug, publishedSite: draft.publish ? { ...draft.site, slug: urlSlug } : null }
             : { ...createSiteFromTemplate('launch', `${urlSlug}'s Page`, urlSlug), publishedSite: null };
 
-          let response;
-          let result;
-          
+          let response: Response;
+          let result: { success?: boolean; error?: string; existingProject?: { slug: string } };
           try {
-            console.log('Making API request to create project with data:', blankProjectData);
             response = await fetch('/api/projects', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                projectData: blankProjectData
-              }),
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ projectData: blankProjectData }),
             });
-
-            console.log('API response status:', response.status);
-            
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error('API error response:', errorText);
-              throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
-            }
-
-            result = await response.json();
-            console.log('API response result:', result);
+            result = await response.json().catch(() => ({}));
           } catch (fetchError) {
             console.warn('API request failed:', fetchError);
-            toast.error('Failed to create project. Please try again.');
+            setProblem({ kind: 'error', message: 'We couldn’t reach the server. Check your connection and try again.' });
             return;
           }
-          
+
           if (result.success) {
             clearDraft();
             if (draft?.publish) toast.success('🎉 Your page is live!');
             router.push(draft ? `/${urlSlug}` : `/${urlSlug}?welcome=1`);
           } else if (response.status === 403 && result.existingProject) {
-            // User already has a project, redirect to it without showing error
-            router.push(`/${result.existingProject.slug}`);
+            // One page per account: explain instead of failing silently. The draft stays saved.
+            setProblem({ kind: 'limit', existingSlug: result.existingProject.slug });
           } else {
-            // Handle API errors gracefully
-            const errorMessage = result.error || 'Failed to create project. Please try again.';
-            console.warn('Project creation failed:', errorMessage);
-            toast.error(errorMessage);
+            console.warn('Project creation failed:', result.error);
+            setProblem({ kind: 'error', message: result.error || 'Failed to create your page. Please try again.' });
           }
         } catch (error) {
           // Handle any unexpected errors
@@ -188,45 +167,8 @@ function CreatePageContent() {
       // Call checkOrCreateProject directly (duplicate prevention handled above)
       void checkOrCreateProject();
     }
-  }, [user, urlSlug, supabase, router]);
+  }, [user, urlSlug, supabase, router, attempt]);
 
-  const checkSlugAvailability = async (slugToCheck: string) => {
-    if (!slugToCheck.trim()) {
-      setIsSlugAvailable(null);
-      return;
-    }
-    
-    setIsCheckingSlug(true);
-    try {
-      const response = await fetch(`/api/projects/public/${encodeURIComponent(slugToCheck)}`);
-      const data = await response.json();
-      setIsSlugAvailable(!data.exists);
-    } catch (error) {
-      console.warn('Error checking slug availability:', error);
-      setIsSlugAvailable(null);
-    } finally {
-      setIsCheckingSlug(false);
-    }
-  };
-
-  // Debounce slug check
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      checkSlugAvailability(slug);
-    }, 300);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [slug]);
-
-  const handleSlugSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (slug && isSlugAvailable) {
-      // Redirect to signup with slug as parameter
-      router.push(`/auth/signup?slug=${encodeURIComponent(slug)}`);
-    }
-  };
 
   const handleGitHubSignIn = async () => {
     setIsSigningIn(true);
@@ -263,7 +205,67 @@ function CreatePageContent() {
     );
   }
 
-  // If user is authenticated, they shouldn't see this page unless there was an error
+  // No address yet (e.g. "Create New Project" on the dashboard): claim one, then build
+  if (!urlSlug) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-xl text-center">
+          <Link href="/" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6 cursor-pointer">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Home
+          </Link>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Choose your page address</h1>
+          <p className="mt-2 mb-8 text-gray-600">This is the link people will visit. You can build your page right after.</p>
+          <AddressForm autoFocus buttonLabel="Start building" onClaim={claimed => router.push(`/templates/launch?slug=${encodeURIComponent(claimed)}`)} />
+          {!user && (
+            <p className="mt-6 text-sm text-gray-600">
+              Already have an account?{' '}
+              <Link href="/auth/signin" className="font-medium text-indigo-600 hover:text-indigo-500">Sign in</Link>
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (user && problem) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-lg">
+          {problem.kind === 'limit' ? (
+            <>
+              <h1 className="text-xl font-bold text-gray-900">Your account already has a page</h1>
+              <p className="mt-2 text-gray-600">
+                Each account can have one page for now. Yours is at{' '}
+                <span className="font-medium text-gray-900">{PAGE_HOST}/{problem.existingSlug}</span>.
+              </p>
+              <Link
+                href={`/${problem.existingSlug}`}
+                className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700"
+              >
+                Open my page
+              </Link>
+            </>
+          ) : (
+            <>
+              <h1 className="text-xl font-bold text-gray-900">We couldn’t create your page</h1>
+              <p className="mt-2 text-gray-600">{problem.message}</p>
+              <button
+                type="button"
+                onClick={() => { setProblem(null); setAttempt(n => n + 1); }}
+                className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700 cursor-pointer"
+              >
+                Try again
+              </button>
+            </>
+          )}
+          <Link href="/" className="mt-3 inline-block text-sm text-gray-500 hover:text-gray-900">Back to home</Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Signed in with an address: the page is being created
   if (user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -285,20 +287,18 @@ function CreatePageContent() {
           </Link>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Create Your Page</h1>
           <p className="text-gray-600">
-            {urlSlug ? `Ready to create your page at /${urlSlug}` : 'Get started by signing in'}
+            Ready to create your page at /{urlSlug}
           </p>
         </div>
 
-        {urlSlug && (
-          <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-            <p className="text-sm text-blue-700 mb-2">
-              <strong>Your page URL will be:</strong>
-            </p>
-            <p className="font-mono text-blue-800 bg-white px-3 py-2 rounded border">
-              onepagelaunch.vercel.app/{urlSlug}
-            </p>
-          </div>
-        )}
+        <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+          <p className="text-sm text-blue-700 mb-2">
+            <strong>Your page URL will be:</strong>
+          </p>
+          <p className="font-mono text-blue-800 bg-white px-3 py-2 rounded border">
+            {PAGE_HOST}/{urlSlug}
+          </p>
+        </div>
 
         <div className="space-y-4">
           <button
@@ -339,46 +339,6 @@ function CreatePageContent() {
           </p>
         </div>
 
-        {!urlSlug && (
-          <div className="mt-8 pt-8 border-t border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Or choose a custom URL</h3>
-            <form onSubmit={handleSlugSubmit} className="space-y-4">
-              <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden focus-within:border-blue-500">
-                <span className="px-3 py-3 text-gray-500 bg-gray-50 text-sm border-r border-gray-300">
-                  onepagelaunch.vercel.app/
-                </span>
-                <input
-                  type="text"
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  placeholder="your-name"
-                  className="flex-1 px-3 py-3 outline-none"
-                  required
-                />
-              </div>
-              
-              {slug && (
-                <div className="text-sm">
-                  {isCheckingSlug ? (
-                    <span className="text-gray-500">Checking availability...</span>
-                  ) : isSlugAvailable === true ? (
-                    <span className="text-green-600">✓ Available</span>
-                  ) : isSlugAvailable === false ? (
-                    <span className="text-red-600">✗ Already taken</span>
-                  ) : null}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={!slug || !isSlugAvailable || isCheckingSlug}
-                className="w-full px-4 py-3 border border-transparent rounded-lg shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              >
-                Continue with this URL
-              </button>
-            </form>
-          </div>
-        )}
       </div>
     </div>
   );
