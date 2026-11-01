@@ -39,9 +39,14 @@ export async function generateMetadata({ params }: ProjectPageProps): Promise<Me
     const live = liveSiteOf(project.data);
     if (!live) return { title: `${project.data.projectName} – coming soon`, robots: { index: false } };
     const hero = live.sections.find((s: Section) => s.type === 'hero');
+    const title = hero?.type === 'hero' ? `${live.projectName} – ${hero.title}` : live.projectName;
+    const description = hero?.type === 'hero' ? hero.subtitle : undefined;
+    // The image itself comes from ./opengraph-image.tsx
     return {
-      title: hero?.type === 'hero' ? `${live.projectName} – ${hero.title}` : live.projectName,
-      description: hero?.type === 'hero' ? hero.subtitle : undefined,
+      title,
+      description,
+      openGraph: { title, description, type: 'website' },
+      twitter: { card: 'summary_large_image', title, description },
     };
   }
   return { title: project.data.projectName };

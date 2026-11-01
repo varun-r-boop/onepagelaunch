@@ -13,12 +13,22 @@ import { isSiteData, type SiteData } from '@/lib/site/types';
 import { sameContent } from '@/lib/site/publish';
 import { User } from '@supabase/supabase-js';
 import { toast } from 'sonner';
+import { UpgradeButton, usePlan } from '@/components/billing';
 
 export default function Dashboard() {
   const [projects, setProjects] = useState<SupabaseProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const supabase = createClient();
+  const plan = usePlan();
+
+  // Back from the Lemon Squeezy checkout
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('upgraded') !== '1') return;
+    // Wait a tick: the toaster mounts after this page's first effects run
+    const timer = setTimeout(() => toast.success('Welcome to Pro! It can take a few seconds to activate.'), 300);
+    return () => clearTimeout(timer);
+  }, []);
 
   const fetchProjects = async (userId: string) => {
     setLoading(true);
@@ -132,11 +142,25 @@ export default function Dashboard() {
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-              <p className="text-gray-600 mt-2">
+              <p className="text-gray-600 mt-2 flex flex-wrap items-center gap-2">
                 Welcome back, {user?.user_metadata?.full_name || user?.email}!
+                {!plan.loading && (
+                  <Badge variant="outline" className={plan.plan === 'pro' ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'text-gray-500'}>
+                    {plan.plan === 'pro' ? 'Pro' : 'Free plan'}
+                  </Badge>
+                )}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              {!plan.loading && (plan.plan === 'pro' ? (
+                plan.portalUrl && (
+                  <a href={plan.portalUrl} target="_blank" rel="noopener noreferrer">
+                    <Button size="lg" variant="outline">Manage billing</Button>
+                  </a>
+                )
+              ) : (
+                <UpgradeButton className="inline-flex h-10 items-center gap-2 rounded-md bg-indigo-600 px-6 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60 cursor-pointer" />
+              ))}
               <Link href="/create">
                 <Button size="lg">
                   <Plus className="h-4 w-4 mr-2" />
