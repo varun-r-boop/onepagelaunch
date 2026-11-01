@@ -8,7 +8,7 @@ export interface WaitlistSignup {
   created_at: string;
 }
 
-// Loads the owner's sign-ups. `setupNeeded` means the database table hasn't been created yet.
+// Loads the owner's sign-ups. The error is 'setup_needed' or 'access_needed' when the database setup is incomplete.
 export function useWaitlist(projectId?: string) {
   const [signups, setSignups] = React.useState<WaitlistSignup[] | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -66,10 +66,19 @@ export default function WaitlistPanel({ data, projectName, hasForm }: {
             Your page has no sign-up form. Hover the hero or call-to-action section and click <strong>Waitlist form</strong> to add one.
           </p>
         )}
-        {error === 'setup_needed' ? (
-          <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
-            The waitlist database table isn’t set up yet. Run <code>supabase/migrations/20261030000000_waitlist_signups.sql</code> in the Supabase SQL editor.
-          </p>
+        {error === 'setup_needed' || error === 'access_needed' ? (
+          <div className="space-y-2 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
+            <p className="font-semibold">Visitors can’t join your waitlist yet</p>
+            <p>
+              {error === 'setup_needed'
+                ? 'The waitlist table isn’t in your database. In the Supabase SQL editor, run these two files from the repo, in order:'
+                : 'Your database isn’t letting the site use the waitlist table. In the Supabase SQL editor, run:'}
+            </p>
+            <ul className="list-disc space-y-1 pl-4 font-mono">
+              {error === 'setup_needed' && <li>supabase/migrations/20261030000000_waitlist_signups.sql</li>}
+              <li>supabase/migrations/20261101000000_waitlist_grants.sql</li>
+            </ul>
+          </div>
         ) : error ? (
           <p className="rounded-lg bg-red-50 p-3 text-xs text-red-700">{error}</p>
         ) : !signups ? (
