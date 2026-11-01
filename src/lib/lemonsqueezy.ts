@@ -43,10 +43,15 @@ export async function createProCheckout({ userId, email, redirectUrl }: { userId
 
 // Webhooks are signed with an HMAC-SHA256 of the raw body (X-Signature header, hex)
 export function verifyWebhookSignature(rawBody: string, signature: string | null): boolean {
-  const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
-  if (!secret || !signature) return false;
+  // Trimmed: a stray space or newline pasted into the env var breaks every signature
+  const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET?.trim();
+  if (!secret) {
+    console.error('Billing webhook: LEMONSQUEEZY_WEBHOOK_SECRET is not set in this deployment.');
+    return false;
+  }
+  if (!signature) return false;
   const expected = Buffer.from(createHmac('sha256', secret).update(rawBody).digest('hex'), 'hex');
-  const received = Buffer.from(signature, 'hex');
+  const received = Buffer.from(signature.trim(), 'hex');
   return expected.length === received.length && timingSafeEqual(expected, received);
 }
 

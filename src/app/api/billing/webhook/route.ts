@@ -16,6 +16,7 @@ interface SubscriptionEvent {
 export async function POST(request: NextRequest) {
   const raw = await request.text();
   if (!verifyWebhookSignature(raw, request.headers.get('x-signature'))) {
+    console.error('Billing webhook: signature mismatch. LEMONSQUEEZY_WEBHOOK_SECRET must equal the webhook’s signing secret in Lemon Squeezy (test mode), then redeploy.');
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
   if (!process.env.SUPABASE_SECRET_KEY) {
