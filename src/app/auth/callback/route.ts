@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { isPageData } from '@/lib/site/types'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -47,8 +48,8 @@ export async function GET(request: Request) {
       // If user has projects and we're redirecting to user-projects, dashboard, or create page, redirect to their most recent project
       if (!projectsError && projects && projects.length > 0 && (next === '/user-projects' || next === '/dashboard' || next.startsWith('/create'))) {
         const mostRecentProject = projects[0]
-        // Check if it's a block-based project
-        if (mostRecentProject.data && mostRecentProject.data.blocks && Array.isArray(mostRecentProject.data.blocks)) {
+        // Any kind of page (site builder or block-based)
+        if (isPageData(mostRecentProject.data)) {
           next = `/${mostRecentProject.slug}`
         }
       }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { DEBOUNCE_DELAY } from '@/lib/constants';
-import { draftOf } from '@/lib/site/publish';
+import { draftOf, sameContent } from '@/lib/site/publish';
 import type { SiteData } from '@/lib/site/types';
 import SiteEditor, { type SaveStatus } from './SiteEditor';
 import SiteRenderer from './SiteRenderer';
@@ -81,7 +81,7 @@ function OwnerEditor({ initialSite, projectId, welcome }: { initialSite: SiteDat
 
   const publishState = useMemo(() => {
     if (!published) return 'never' as const;
-    return JSON.stringify(draftOf(site)) === JSON.stringify(published) ? 'live' as const : 'changes' as const;
+    return sameContent(site, published) ? 'live' as const : 'changes' as const;
   }, [site, published]);
 
   const publish = useCallback(async () => {

@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, Trash2, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { SupabaseProject, BlockProjectData } from '@/lib/types';
+import { isSiteData, type SiteData } from '@/lib/site/types';
+import { sameContent } from '@/lib/site/publish';
 import { User } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 
@@ -17,32 +19,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const supabase = createClient();
-
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      if (user) {
-        await fetchProjects(user.id);
-      }
-    };
-
-    getUser();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchProjects(session.user.id);
-        } else {
-          setProjects([]);
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   const fetchProjects = async (userId: string) => {
     setLoading(true);
@@ -56,11 +32,11 @@ export default function Dashboard() {
       if (error) {
         console.error('Error fetching projects:', error);
       } else {
-        // Filter to only show block-based projects
-        const blockProjects = (data || []).filter(project => 
-          project.data.blocks && Array.isArray(project.data.blocks)
+        // Pages from the site builder, plus older block-based ones
+        const pages = (data || []).filter(project =>
+          isSiteData(project.data) || (project.data?.blocks && Array.isArray(project.data.blocks))
         );
-        setProjects(blockProjects);
+        setProjects(pages);
       }
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -68,6 +44,41 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const getUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
+        if (user) {
+          await fetchProjects(user.id);
+        } else {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Error loading user:', error);
+        setLoading(false);
+      }
+    };
+
+    getUser();
+
+    // Listen for sign-in/out. Supabase calls must not be awaited inside this
+    // callback (it runs while the auth client holds a lock and can deadlock),
+    // so the reload is deferred. The initial load is handled by getUser above.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      if (event === 'SIGNED_IN' && session?.user) {
+        const userId = session.user.id;
+        setTimeout(() => { void fetchProjects(userId); }, 0);
+      } else if (event === 'SIGNED_OUT') {
+        setProjects([]);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const deleteProject = async (projectId: string) => {
     // Use a more elegant confirmation with toast
@@ -104,6 +115,13 @@ export default function Dashboard() {
   const getBlockCount = (project: SupabaseProject) => {
     const blockData = project.data as BlockProjectData;
     return blockData.blocks?.length || 0;
+  };
+
+  // Whether visitors see the latest edits
+  const publishStatus = (site: SiteData) => {
+    if (site.publishedSite === undefined) return 'Live';
+    if (site.publishedSite === null) return 'Not published';
+    return sameContent(site, site.publishedSite) ? 'Live' : 'Unpublished changes';
   };
 
   return (
@@ -149,7 +167,7 @@ export default function Dashboard() {
                 <div className="text-6xl mb-4">🚀</div>
                 <CardTitle className="mb-2">No projects yet</CardTitle>
                 <CardDescription className="mb-4">
-                  Create your first block-based website to get started!
+                  Create your first page to get started!
                 </CardDescription>
                 <Link href="/create">
                   <Button>
@@ -162,30 +180,43 @@ export default function Dashboard() {
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {projects.map((project) => {
-                const blockData = project.data as BlockProjectData;
+                const site = isSiteData(project.data) ? project.data : null;
+                const hero = site?.sections.find(section => section.type === 'hero');
+                const status = site ? publishStatus(site) : null;
                 return (
                   <Card key={project.id} className="hover:shadow-lg transition-shadow">
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <CardTitle className="text-lg">{blockData.projectName}</CardTitle>
+                          <CardTitle className="text-lg">{project.data.projectName}</CardTitle>
                           <CardDescription className="mt-1 line-clamp-2">
-                            Block-based project with {getBlockCount(project)} blocks
+                            {site
+                              ? (hero?.type === 'hero' ? hero.title : `${site.sections.length} sections`)
+                              : `Block-based project with ${getBlockCount(project)} blocks`}
                           </CardDescription>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 mt-2">
                         <Badge variant="outline" className="text-xs">
-                          {project.slug}
+                          /{project.slug}
                         </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {getBlockCount(project)} blocks
-                        </Badge>
+                        {status ? (
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${status === 'Live' ? 'border-green-200 bg-green-50 text-green-700' : status === 'Not published' ? 'text-gray-500' : 'border-amber-200 bg-amber-50 text-amber-700'}`}
+                          >
+                            {status}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs">
+                            {getBlockCount(project)} blocks
+                          </Badge>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent>
                       <div className="flex gap-2">
-                        <Link href={`/${project.slug}`} target="_blank">
+                        <Link href={site ? `/${project.slug}?view=1` : `/${project.slug}`} target="_blank">
                           <Button variant="outline" size="sm">
                             <Eye className="h-4 w-4 mr-1" />
                             View

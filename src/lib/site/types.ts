@@ -178,3 +178,8 @@ export function isSiteData(data: unknown): data is SiteData {
     Array.isArray((data as { sections?: unknown }).sections)
   );
 }
+
+// Any page the app can show: a site-builder page or an older block-based one
+export function isPageData(data: unknown): boolean {
+  return isSiteData(data) || Array.isArray((data as { blocks?: unknown } | null)?.blocks);
+}
