@@ -112,4 +112,6 @@ The public endpoint also:
 - rate-limits to 10 attempts per minute per IP,
 - treats a repeat email as success.
 
-If the table is missing or the grants weren't run, visitors see "This page isn't accepting sign-ups right now". The editor's Waitlist tab then names the file to run, and the server log says the same (`Error saving waitlist signup … Fix: …`).
+**Recommended:** also set `SUPABASE_SECRET_KEY` (Supabase → Project Settings → API Keys → secret key) in the server environment, e.g. Vercel. The API then saves and lists sign-ups with it, after checking the page exists, is live and has a waitlist form, so sign-ups don't depend on the table's grants or row-level security. It's server-only; never prefix it with `NEXT_PUBLIC_`.
+
+Failed saves are logged with the HTTP status, code, message, details and hint. If the table is missing or access is denied, visitors see "This page isn't accepting sign-ups right now". The editor's Waitlist tab then names the file to run, and the server log says the same (`Error saving waitlist signup … Fix: …`).
