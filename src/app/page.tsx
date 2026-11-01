@@ -9,6 +9,8 @@ import { buildQuickStartSite } from '@/lib/site/quickstart';
 import { PAGE_HOST } from '@/lib/slug';
 import { AddressForm } from '@/components/address-form';
 import SiteRenderer from '@/components/site/SiteRenderer';
+import { UpgradeButton } from '@/components/billing';
+import { PLAN_FEATURES, PRO_PRICE_USD } from '@/lib/plans';
 
 const container = 'mx-auto w-full max-w-6xl px-5 md:px-8';
 const card = 'rounded-[14px] border border-[#e8e8eb] bg-[#f6f6f7]';
@@ -24,7 +26,8 @@ const FAQS = [
   { q: 'Do I need design or coding skills?', a: 'None. Every section is already designed. You change the words, pick two colors, and switch sections on or off.' },
   { q: 'How does the waitlist work?', a: 'Choose “Collect emails” and your page gets a sign-up form. Everyone who joins shows up in your editor, ready to export as a CSV.' },
   { q: 'Can I change my page after publishing?', a: 'Anytime. Edits are saved as a draft, and visitors only see them when you click Publish changes.' },
-  { q: 'Can I use my own domain?', a: `Not yet. Your page lives at ${PAGE_HOST}/your-product. Custom domains are on our roadmap.` },
+  { q: 'Can I use my own domain?', a: `Yes, on Pro. Connect a domain like yourproduct.com in a few minutes. On Free, your page lives at ${PAGE_HOST}/your-product.` },
+  { q: 'What do I get with Pro?', a: `Analytics (visitors, sign-ups, conversion rate and where people come from) and a custom domain, for $${PRO_PRICE_USD}/month. Cancel anytime.` },
 ];
 
 // Real pages made with the builder, rendered at desktop width and scaled to fit
@@ -121,6 +124,7 @@ export default function Home() {
           <nav className="hidden items-center gap-7 text-sm text-[#6b7280] md:flex">
             <a href="#how" className="hover:text-[#0a0a0a]">How it works</a>
             <a href="#benefits" className="hover:text-[#0a0a0a]">Features</a>
+            <a href="#pricing" className="hover:text-[#0a0a0a]">Pricing</a>
             <a href="#questions" className="hover:text-[#0a0a0a]">FAQ</a>
           </nav>
           <div className="flex items-center gap-2">
@@ -272,6 +276,51 @@ export default function Home() {
                 <div>
                   <h3 className="text-lg font-semibold tracking-tight">Looks right on every screen</h3>
                   <p className="mt-1 text-sm text-[#6b7280]">Every section adapts to phones automatically, and you can preview mobile while you edit.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Pricing */}
+        <section id="pricing" className="scroll-mt-16 pb-20 md:pb-28">
+          <div className={container}>
+            <div className="mx-auto mb-12 max-w-2xl text-center">
+              <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-indigo-600">Pricing</p>
+              <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Start free. Upgrade when it’s working.</h2>
+            </div>
+            <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-2">
+              <div className={`${card} flex flex-col p-7`}>
+                <h3 className="text-lg font-semibold">Free</h3>
+                <p className="mt-1 text-sm text-[#6b7280]">Everything you need to launch</p>
+                <p className="mt-6 flex items-baseline gap-1"><span className="text-5xl font-extrabold tracking-tight">$0</span><span className="text-sm text-[#6b7280]">/forever</span></p>
+                <ul className="mt-8 flex-1 space-y-3 text-sm">
+                  {PLAN_FEATURES.free.map(feature => (
+                    <li key={feature} className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" /> {feature}</li>
+                  ))}
+                </ul>
+                <button type="button" onClick={focusStart} className="mt-8 rounded-[14px] border border-[#e8e8eb] bg-white px-5 py-3 text-sm font-semibold hover:border-[#6b7280] cursor-pointer">
+                  Start building
+                </button>
+              </div>
+              <div className="relative flex flex-col rounded-[14px] border-2 border-indigo-600 bg-white p-7 shadow-xl shadow-indigo-500/10">
+                <span className="absolute -top-3 left-7 rounded-full bg-indigo-600 px-3 py-0.5 text-xs font-semibold text-white">For growing products</span>
+                <h3 className="text-lg font-semibold">Pro</h3>
+                <p className="mt-1 text-sm text-[#6b7280]">Know what’s working, on your own domain</p>
+                <p className="mt-6 flex items-baseline gap-1"><span className="text-5xl font-extrabold tracking-tight">${PRO_PRICE_USD}</span><span className="text-sm text-[#6b7280]">/month</span></p>
+                <ul className="mt-8 flex-1 space-y-3 text-sm">
+                  {PLAN_FEATURES.pro.map(feature => (
+                    <li key={feature} className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" /> {feature}</li>
+                  ))}
+                </ul>
+                <div className="mt-8">
+                  {signedIn ? (
+                    <UpgradeButton className="inline-flex w-full items-center justify-center gap-2 rounded-[14px] bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60 cursor-pointer" />
+                  ) : (
+                    <button type="button" onClick={focusStart} className="w-full rounded-[14px] bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-700 cursor-pointer">
+                      Start free, upgrade anytime
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

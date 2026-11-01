@@ -18,6 +18,9 @@ import { SectionView } from './sections';
 import QuickStartWizard from './QuickStartWizard';
 import DesignPanel from './design-panel';
 import WaitlistPanel, { useWaitlist } from './waitlist-panel';
+import AnalyticsPanel from './analytics-panel';
+import DomainPanel from './domain-panel';
+import { usePlan } from '@/components/billing';
 import { SiteActionsContext, type SiteActions } from './link-paste-box';
 import { resolveLinks } from '@/lib/links/client';
 import { extractUrls } from '@/lib/links/detect';
@@ -261,7 +264,10 @@ export default function SiteEditor({
   const [preview, setPreview] = React.useState(false);
   // The sidebar holds the editing tools; it can be hidden for more canvas room
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
-  const [tab, setTab] = React.useState<'design' | 'waitlist'>('design');
+  type Tab = 'design' | 'analytics' | 'waitlist' | 'domain';
+  const [tab, setTab] = React.useState<Tab>('design');
+  // Saved pages only; the playground has no account
+  const plan = usePlan(!!projectId);
   // On small screens the sidebar covers the page, so start with it hidden
   React.useEffect(() => {
     if (window.matchMedia('(max-width: 1023px)').matches) setSidebarOpen(false);
@@ -485,21 +491,29 @@ export default function SiteEditor({
             </div>
           </div>
 
-          {/* Tabs */}
-          {projectId && (pageHasWaitlist || !!waitlist.signups?.length) && (
+          {/* Tabs (saved pages only) */}
+          {projectId && (
             <div className="flex gap-1 border-b border-gray-100 px-3 py-2" role="tablist">
-              {(['design', 'waitlist'] as const).map(t => (
+              {([
+                { id: 'design', label: 'Design' },
+                { id: 'analytics', label: 'Analytics' },
+                ...(pageHasWaitlist || waitlist.signups?.length ? [{ id: 'waitlist', label: 'Waitlist' }] : []),
+                { id: 'domain', label: 'Domain' },
+              ] as { id: Tab; label: string }[]).map(t => (
                 <button
-                  key={t}
+                  key={t.id}
                   type="button"
                   role="tab"
-                  aria-selected={tab === t}
-                  onClick={() => setTab(t)}
-                  className={cn('inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-sm font-medium cursor-pointer', tab === t ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100')}
+                  aria-selected={tab === t.id}
+                  onClick={() => setTab(t.id)}
+                  className={cn('inline-flex flex-1 items-center justify-center gap-1 rounded-lg px-1 py-1.5 text-xs font-medium cursor-pointer', tab === t.id ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100')}
                 >
-                  {t === 'design' ? 'Design' : 'Waitlist'}
-                  {t === 'waitlist' && !!waitlist.signups?.length && (
-                    <span className={cn('rounded-full px-1.5 text-xs font-semibold', tab === t ? 'bg-white text-gray-900' : 'bg-gray-900 text-white')}>{waitlist.signups.length}</span>
+                  {t.label}
+                  {t.id === 'waitlist' && !!waitlist.signups?.length && (
+                    <span className={cn('rounded-full px-1.5 text-[10px] font-semibold', tab === t.id ? 'bg-white text-gray-900' : 'bg-gray-900 text-white')}>{waitlist.signups.length}</span>
+                  )}
+                  {(t.id === 'analytics' || t.id === 'domain') && !plan.loading && plan.plan !== 'pro' && (
+                    <span className={cn('rounded px-1 text-[9px] font-bold uppercase', tab === t.id ? 'bg-white/20' : 'bg-indigo-100 text-indigo-700')}>Pro</span>
                   )}
                 </button>
               ))}
@@ -507,8 +521,12 @@ export default function SiteEditor({
           )}
 
           <div className="flex-1 overflow-y-auto">
-            {tab === 'waitlist' && projectId ? (
+            {projectId && tab === 'waitlist' ? (
               <WaitlistPanel data={waitlist} projectName={site.projectName} hasForm={pageHasWaitlist} />
+            ) : projectId && tab === 'analytics' ? (
+              <AnalyticsPanel projectId={projectId} plan={plan} />
+            ) : projectId && tab === 'domain' ? (
+              <DomainPanel projectId={projectId} plan={plan} />
             ) : (
               <DesignPanel site={site} onChange={onChange} onStartOver={startOver} removed={removedSections} />
             )}

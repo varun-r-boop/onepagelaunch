@@ -19,9 +19,29 @@ interface SiteProjectClientProps {
 export function SiteProjectClient({ site, isOwner, projectId, welcome }: SiteProjectClientProps) {
   if (!isOwner) {
     // The server only sends visitors the published version
-    return <SiteRenderer site={site} showBadge />;
+    return (
+      <>
+        <TrackView slug={site.slug} />
+        <SiteRenderer site={site} showBadge />
+      </>
+    );
   }
   return <OwnerEditor initialSite={site} projectId={projectId} welcome={welcome} />;
+}
+
+// Records one view for the owner's analytics (no cookies; see /api/track)
+function TrackView({ slug }: { slug?: string }) {
+  // Once per page load, even when React runs effects twice in development
+  const sent = useRef(false);
+  useEffect(() => {
+    if (!slug || sent.current) return;
+    sent.current = true;
+    const body = JSON.stringify({ slug, referrer: document.referrer });
+    if (!navigator.sendBeacon?.('/api/track', new Blob([body], { type: 'application/json' }))) {
+      void fetch('/api/track', { method: 'POST', body, keepalive: true }).catch(() => {});
+    }
+  }, [slug]);
+  return null;
 }
 
 async function saveProject(projectData: SiteData, projectId: string): Promise<boolean> {

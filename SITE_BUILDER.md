@@ -56,6 +56,12 @@ New pages are built from **pre-designed sections styled by one theme**, inspired
 | `src/components/site/waitlist-panel.tsx` | The owner's sign-up list and CSV export |
 | `src/app/api/waitlist/route.ts` | `POST` join a waitlist (public) · `GET` list sign-ups (owner) |
 | `supabase/migrations/…_waitlist_signups.sql` | Table and row-level security for sign-ups |
+| `src/lib/plans.ts`, `src/lib/plans-server.ts` | Free/Pro plan features and `isPro()` |
+| `src/lib/lemonsqueezy.ts`, `src/app/api/billing/*` | Checkout, plan status, and the signed webhook that updates `subscriptions` |
+| `src/components/billing.tsx` | `usePlan()`, Upgrade button, and the Pro lock card |
+| `src/app/[slug]/opengraph-image.tsx` | Social preview image for each published page |
+| `src/app/api/track/route.ts`, `src/app/api/analytics/route.ts`, `src/components/site/analytics-panel.tsx` | Page-view tracking and the Pro analytics tab |
+| `src/lib/vercel-domains.ts`, `src/app/api/domains/route.ts`, `src/components/site/domain-panel.tsx`, `src/proxy.ts` | Pro custom domains: connect via Vercel, DNS instructions, routing by host |
 
 Layouts use container queries (`@container`, `@3xl:`), so the editor's mobile preview frame shows the real mobile layout.
 
@@ -115,3 +121,37 @@ The public endpoint also:
 **Recommended:** also set `SUPABASE_SECRET_KEY` (Supabase → Project Settings → API Keys → secret key) in the server environment, e.g. Vercel. The API then saves and lists sign-ups with it, after checking the page exists, is live and has a waitlist form, so sign-ups don't depend on the table's grants or row-level security. It's server-only; never prefix it with `NEXT_PUBLIC_`.
 
 Failed saves are logged with the HTTP status, code, message, details and hint. If the table is missing or access is denied, visitors see "This page isn't accepting sign-ups right now". The editor's Waitlist tab then names the file to run, and the server log says the same (`Error saving waitlist signup … Fix: …`).
+
+## Plans
+
+| | Free | Pro ($9/month) |
+| --- | --- | --- |
+| Page builder, waitlist, CSV export | ✓ | ✓ |
+| Social preview image | ✓ | ✓ |
+| Analytics | | ✓ |
+| Custom domain | | ✓ |
+
+Pro features are enforced on the server: `/api/analytics` and `POST /api/domains` return `402` on Free, and the proxy only serves a custom domain while its owner is on Pro. A cancelled subscription keeps Pro until the end of the paid period (`isPro()` in `src/lib/plans.ts`).
+
+### Setup
+
+1. Run `supabase/migrations/20261102000000_plans_analytics_domains.sql` in the Supabase SQL editor. It creates `subscriptions` and `page_views` and adds `projects.custom_domain`.
+2. Set `SUPABASE_SECRET_KEY`. The billing webhook and view tracking write with it.
+3. **Lemon Squeezy:**
+   - Create a "Pro" subscription product at $9/month.
+   - Set `LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_STORE_ID` and `LEMONSQUEEZY_VARIANT_ID` (the variant of that product).
+   - Add a webhook to `https://<your-app>/api/billing/webhook` with the `subscription_*` events, and set its signing secret as `LEMONSQUEEZY_WEBHOOK_SECRET`.
+4. **Vercel (custom domains):** set `VERCEL_API_TOKEN`, `VERCEL_PROJECT_ID` and, for team projects, `VERCEL_TEAM_ID`.
+5. Redeploy so the new environment variables apply.
+
+Without the Lemon Squeezy or Vercel settings, the Upgrade and Connect domain buttons show "not available yet" rather than failing.
+
+### How each feature works
+
+- **Billing:** `POST /api/billing/checkout` creates a hosted checkout with the user id as custom data. Lemon Squeezy calls the webhook, which verifies `X-Signature` (HMAC-SHA256 of the raw body) and upserts the user's `subscriptions` row. Pro users get a **Manage billing** link (the Lemon Squeezy customer portal) on the dashboard.
+- **Analytics:** each visit to a published page sends one beacon to `/api/track`. It uses no cookies. IP and browser only feed a hash that rotates daily, so unique visitors can be counted but not followed across days. Bots and the owner's own visits are skipped. `/api/analytics` aggregates visitors, views, sign-ups, conversion, referrers and countries (`x-vercel-ip-country`) for 7 or 30 days.
+- **Custom domains:**
+  - The Domain tab adds the domain to the Vercel project and shows the DNS records to create: `A 76.76.21.21` for a root domain, `CNAME cname.vercel-dns.com` for a subdomain, plus a `TXT` record if Vercel asks for verification.
+  - The tab shows "Waiting for DNS" until Vercel reports the domain verified and correctly configured.
+  - `src/proxy.ts` serves the page for requests on that host, with or without `www.`, while `/api/*` passes through.
+- **Social preview image:** `opengraph-image.tsx` renders a 1200×630 card from the live page, with its name, headline, subtitle, main button, address and colors, in Inter loaded from Google Fonts. Page metadata sets `twitter:card=summary_large_image`.

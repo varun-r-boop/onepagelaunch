@@ -199,3 +199,11 @@ export function googleFontsHref(): string {
   const families = Object.values(THEME_FONTS).map(f => `family=${f.googleFamily}`).join('&');
   return `https://fonts.googleapis.com/css2?${families}&display=swap`;
 }
+
+// Concrete colors for a theme, for places that can't use the CSS variables (e.g. social images)
+export function themePalette(theme: SiteTheme) {
+  const base = theme.background
+    ? paletteFromColors(theme.background, theme.accent)
+    : THEME_PRESETS[theme.preset] ?? THEME_PRESETS.light;
+  return { bg: base.bg, fg: base.fg, muted: base.muted, card: base.card, border: base.border, glow: base.glow, accent: theme.accent, accentFg: readableOn(theme.accent) };
+}
