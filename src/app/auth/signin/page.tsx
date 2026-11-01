@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Github, Mail, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { isPageData } from '@/lib/site/types';
 
 function SigninPageContent() {
   const router = useRouter();
@@ -51,8 +52,8 @@ function SigninPageContent() {
 
               if (projects && projects.length > 0) {
                 const mostRecentProject = projects[0];
-                // Check if it's a block-based project
-                if (mostRecentProject.data && mostRecentProject.data.blocks && Array.isArray(mostRecentProject.data.blocks)) {
+                // Any kind of page (site builder or block-based)
+                if (isPageData(mostRecentProject.data)) {
                   router.push(`/${mostRecentProject.slug}`);
                   return;
                 }
@@ -74,39 +75,42 @@ function SigninPageContent() {
 
     getUser();
 
+    // Supabase calls must not be awaited inside this callback (it runs while the
+    // auth client holds a lock and can deadlock), so the work runs right after it
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         const user = session?.user ?? null;
-        
-        if (user) {
-          if (slug) {
-            router.push(`/create?slug=${encodeURIComponent(slug)}`);
-          } else {
-            // Check if user has existing projects
-            try {
-              const { data: projects } = await supabase
-                .from('projects')
-                .select('slug, data, updated_at')
-                .eq('user_id', user.id)
-                .order('updated_at', { ascending: false })
-                .limit(1);
+        setTimeout(async () => {
+          if (user) {
+            if (slug) {
+              router.push(`/create?slug=${encodeURIComponent(slug)}`);
+            } else {
+              // Check if user has existing projects
+              try {
+                const { data: projects } = await supabase
+                  .from('projects')
+                  .select('slug, data, updated_at')
+                  .eq('user_id', user.id)
+                  .order('updated_at', { ascending: false })
+                  .limit(1);
 
-              if (projects && projects.length > 0) {
-                const mostRecentProject = projects[0];
-                // Check if it's a block-based project
-                if (mostRecentProject.data && mostRecentProject.data.blocks && Array.isArray(mostRecentProject.data.blocks)) {
-                  router.push(`/${mostRecentProject.slug}`);
-                  return;
+                if (projects && projects.length > 0) {
+                  const mostRecentProject = projects[0];
+                  // Any kind of page (site builder or block-based)
+                  if (isPageData(mostRecentProject.data)) {
+                    router.push(`/${mostRecentProject.slug}`);
+                    return;
+                  }
                 }
+              } catch (projectError) {
+                console.warn('Unable to fetch user projects:', projectError);
               }
-            } catch (projectError) {
-              console.warn('Unable to fetch user projects:', projectError);
-            }
             
-            // Fallback: redirect to create page
-            router.push('/create');
+              // Fallback: redirect to create page
+              router.push('/create');
+            }
           }
-        }
+        }, 0);
       }
     );
 
