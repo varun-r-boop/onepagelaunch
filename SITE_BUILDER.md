@@ -95,7 +95,12 @@ The `[slug]` route only sends the published version to visitors' browsers. Owner
 
 ## Waitlist setup
 
-Run `supabase/migrations/20261030000000_waitlist_signups.sql` once in the Supabase SQL editor. It creates `waitlist_signups` with row-level security:
+Run these once in the Supabase SQL editor, in order:
+
+1. `supabase/migrations/20261030000000_waitlist_signups.sql` creates `waitlist_signups` with row-level security.
+2. `supabase/migrations/20261101000000_waitlist_grants.sql` grants the API roles access to it. Newer Supabase projects don't do this automatically for tables created in SQL. Without it, every sign-up fails with "permission denied".
+
+The row-level security rules are:
 
 - Anyone can add an email to an existing page.
 - Only the page's owner can read or delete sign-ups.
@@ -107,4 +112,4 @@ The public endpoint also:
 - rate-limits to 10 attempts per minute per IP,
 - treats a repeat email as success.
 
-Until the table exists, the Waitlist panel shows a setup message.
+If the table is missing or the grants weren't run, visitors see "This page isn't accepting sign-ups right now". The editor's Waitlist tab then names the file to run, and the server log says the same (`Error saving waitlist signup … Fix: …`).

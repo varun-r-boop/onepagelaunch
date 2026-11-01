@@ -4,6 +4,23 @@ import { isSiteData } from '@/lib/site/types';
 import { hasWaitlist, liveSiteOf } from '@/lib/site/publish';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+// Database setup problems the page owner has to fix (not the visitor)
+type SetupProblem = 'setup_needed' | 'access_needed';
+
+function setupProblem(error: { code?: string; message?: string }): SetupProblem | null {
+  const message = error.message ?? '';
+  // Table missing: 42P01 from Postgres, PGRST205 from the Data API
+  if (error.code === '42P01' || error.code === 'PGRST205' || /does not exist|schema cache/i.test(message)) return 'setup_needed';
+  // No grant on the table, or a row-level security rule rejected the row
+  if (error.code === '42501' || /permission denied|row-level security/i.test(message)) return 'access_needed';
+  return null;
+}
+
+const SETUP_HINTS: Record<SetupProblem, string> = {
+  setup_needed: 'The waitlist_signups table is missing. Run supabase/migrations/20261030000000_waitlist_signups.sql and 20261101000000_waitlist_grants.sql in the Supabase SQL editor.',
+  access_needed: 'The API is not allowed to use waitlist_signups. Run supabase/migrations/20261101000000_waitlist_grants.sql in the Supabase SQL editor.',
+};
 const WINDOW_MS = 60_000;
 const MAX_PER_WINDOW = 10;
 
@@ -56,7 +73,12 @@ export async function POST(request: NextRequest) {
   if (error) {
     // Already signed up counts as success
     if (error.code === '23505') return NextResponse.json({ success: true, already: true });
-    console.error('Error saving waitlist signup:', error);
+    const problem = setupProblem(error);
+    console.error('Error saving waitlist signup:', error, problem ? `\nFix: ${SETUP_HINTS[problem]}` : '');
+    if (problem) {
+      // Retrying won't help the visitor; the page owner has to finish the setup
+      return NextResponse.json({ error: 'This page isn’t accepting sign-ups right now. Please check back later.', reason: problem }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Couldn’t save your email. Please try again.' }, { status: 500 });
   }
   return NextResponse.json({ success: true });
@@ -81,10 +103,9 @@ export async function GET(request: NextRequest) {
     .order('created_at', { ascending: false })
     .limit(5000);
   if (error) {
-    console.error('Error loading waitlist:', error);
-    // 42P01 = the table doesn't exist yet (migration not run)
-    const setupNeeded = error.code === '42P01' || /does not exist|schema cache/i.test(error.message);
-    return NextResponse.json({ error: setupNeeded ? 'setup_needed' : 'Failed to load sign-ups' }, { status: 500 });
+    const problem = setupProblem(error);
+    console.error('Error loading waitlist:', error, problem ? `\nFix: ${SETUP_HINTS[problem]}` : '');
+    return NextResponse.json({ error: problem ?? 'Failed to load sign-ups' }, { status: 500 });
   }
   return NextResponse.json({ signups: data });
 }
