@@ -1,20 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { verifyWebhookSignature } from '@/lib/lemonsqueezy';
+import { subscriptionRow, verifyWebhookSignature, type SubscriptionAttributes } from '@/lib/lemonsqueezy';
 
 interface SubscriptionEvent {
   meta?: { event_name?: string; custom_data?: { user_id?: string } };
   data?: {
     type?: string;
     id?: string;
-    attributes?: {
-      store_id?: number | string;
-      customer_id?: number | string;
-      status?: string;
-      renews_at?: string | null;
-      ends_at?: string | null;
-      urls?: { customer_portal?: string | null };
-    };
+    attributes?: SubscriptionAttributes;
   };
 }
 
@@ -44,6 +37,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   }
   if (process.env.LEMONSQUEEZY_STORE_ID && String(attributes.store_id) !== String(process.env.LEMONSQUEEZY_STORE_ID)) {
+    console.warn(`Billing webhook: ignored ${name} from store ${attributes.store_id}; LEMONSQUEEZY_STORE_ID is ${process.env.LEMONSQUEEZY_STORE_ID}.`);
     return NextResponse.json({ received: true });
   }
 
@@ -60,18 +54,9 @@ export async function POST(request: NextRequest) {
     console.error(`Billing webhook: no user for subscription ${subscriptionId} (${name})`);
     return NextResponse.json({ received: true });
   }
+  console.log(`Billing webhook: ${name} for user ${userId}, status ${attributes.status}`);
 
-  const { error } = await db.from('subscriptions').upsert({
-    user_id: userId,
-    plan: 'pro',
-    status: attributes.status ?? null,
-    ls_subscription_id: subscriptionId,
-    ls_customer_id: attributes.customer_id != null ? String(attributes.customer_id) : null,
-    renews_at: attributes.renews_at ?? null,
-    ends_at: attributes.ends_at ?? null,
-    portal_url: attributes.urls?.customer_portal ?? null,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'user_id' });
+  const { error } = await db.from('subscriptions').upsert(subscriptionRow(userId, subscriptionId, attributes), { onConflict: 'user_id' });
 
   if (error) {
     console.error('Billing webhook: couldn’t save subscription', { code: error.code, message: error.message, details: error.details });

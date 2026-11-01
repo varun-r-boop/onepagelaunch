@@ -13,28 +13,44 @@ export interface PlanState {
   status: string | null;
 }
 
+interface PlanResult extends PlanState {
+  // Re-reads the plan; with sync, first asks the server to pull it from Lemon Squeezy
+  refresh: (options?: { sync?: boolean }) => Promise<PlanState>;
+}
+
+async function loadPlan(sync: boolean): Promise<Omit<PlanState, 'loading'> | null> {
+  if (sync) await fetch('/api/billing/sync', { method: 'POST' }).catch(() => null);
+  const res = await fetch('/api/billing/status', { cache: 'no-store' }).catch(() => null);
+  const data = res?.ok ? await res.json().catch(() => null) : null;
+  if (!data) return null;
+  return {
+    plan: data.plan === 'pro' ? 'pro' : 'free',
+    portalUrl: data.portalUrl ?? null,
+    endsAt: data.endsAt ?? null,
+    status: data.status ?? null,
+  };
+}
+
 // The signed-in user's plan. Pass enabled=false where there is no account (the playground).
-export function usePlan(enabled = true): PlanState {
+export function usePlan(enabled = true): PlanResult {
   const [state, setState] = React.useState<PlanState>({ plan: 'free', loading: enabled, portalUrl: null, endsAt: null, status: null });
   React.useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
-    fetch('/api/billing/status')
-      .then(res => (res.ok ? res.json() : null))
-      .then(data => {
-        if (cancelled) return;
-        setState({
-          plan: data?.plan === 'pro' ? 'pro' : 'free',
-          loading: false,
-          portalUrl: data?.portalUrl ?? null,
-          endsAt: data?.endsAt ?? null,
-          status: data?.status ?? null,
-        });
-      })
-      .catch(() => !cancelled && setState(s => ({ ...s, loading: false })));
+    loadPlan(false).then(data => {
+      if (!cancelled) setState(s => (data ? { ...data, loading: false } : { ...s, loading: false }));
+    });
     return () => { cancelled = true; };
   }, [enabled]);
-  return state;
+
+  const refresh = React.useCallback(async ({ sync = false } = {}) => {
+    const data = await loadPlan(sync);
+    const next: PlanState = data ? { ...data, loading: false } : { plan: 'free', loading: false, portalUrl: null, endsAt: null, status: null };
+    if (data) setState(next);
+    return next;
+  }, []);
+
+  return { ...state, refresh };
 }
 
 // Sends the user to the Lemon Squeezy checkout for Pro

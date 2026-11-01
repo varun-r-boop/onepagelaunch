@@ -22,13 +22,39 @@ export default function Dashboard() {
   const supabase = createClient();
   const plan = usePlan();
 
-  // Back from the Lemon Squeezy checkout
+  const [checkingPlan, setCheckingPlan] = useState(false);
+  const { refresh: refreshPlan } = plan;
+
+  // Back from the Lemon Squeezy checkout: the webhook can land a few seconds
+  // after the redirect, so keep checking (and pull from Lemon Squeezy directly)
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('upgraded') !== '1') return;
-    // Wait a tick: the toaster mounts after this page's first effects run
-    const timer = setTimeout(() => toast.success('Welcome to Pro! It can take a few seconds to activate.'), 300);
-    return () => clearTimeout(timer);
-  }, []);
+    let cancelled = false;
+    (async () => {
+      // Wait a tick: the toaster mounts after this page's first effects run
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const toastId = toast.loading('Activating Pro…');
+      for (let attempt = 0; attempt < 6 && !cancelled; attempt++) {
+        const next = await refreshPlan({ sync: true });
+        if (next.plan === 'pro') {
+          toast.success('Welcome to Pro! Analytics and custom domains are unlocked.', { id: toastId });
+          window.history.replaceState(null, '', '/dashboard');
+          return;
+        }
+        await new Promise(resolve => setTimeout(resolve, 2500));
+      }
+      if (!cancelled) toast.error('Your payment went through, but Pro isn’t active yet. Use “Already paid? Refresh” in a minute.', { id: toastId, duration: 10000 });
+    })();
+    return () => { cancelled = true; };
+  }, [refreshPlan]);
+
+  const checkPlanAgain = async () => {
+    setCheckingPlan(true);
+    const next = await refreshPlan({ sync: true });
+    setCheckingPlan(false);
+    if (next.plan === 'pro') toast.success('You’re on Pro!');
+    else toast.error('We couldn’t find a Pro subscription for ' + (user?.email ?? 'your email') + ' yet.');
+  };
 
   const fetchProjects = async (userId: string) => {
     setLoading(true);
@@ -159,7 +185,12 @@ export default function Dashboard() {
                   </a>
                 )
               ) : (
-                <UpgradeButton className="inline-flex h-10 items-center gap-2 rounded-md bg-indigo-600 px-6 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60 cursor-pointer" />
+                <>
+                  <button type="button" onClick={() => void checkPlanAgain()} disabled={checkingPlan} className="h-10 px-2 text-xs font-medium text-gray-500 hover:text-gray-900 disabled:opacity-60 cursor-pointer">
+                    {checkingPlan ? 'Checking…' : 'Already paid? Refresh'}
+                  </button>
+                  <UpgradeButton className="inline-flex h-10 items-center gap-2 rounded-md bg-indigo-600 px-6 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60 cursor-pointer" />
+                </>
               ))}
               <Link href="/create">
                 <Button size="lg">
